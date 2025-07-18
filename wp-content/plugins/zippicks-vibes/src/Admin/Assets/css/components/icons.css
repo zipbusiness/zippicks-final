@@ -1,0 +1,93 @@
+/**
+ * Icon Management
+ * 
+ * @package ZipPicksVibesV2
+ */
+
+.zippicks-vibes-v2-admin .icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1em;
+    height: 1em;
+    font-size: inherit;
+    line-height: 1;
+}
+
+.zippicks-vibes-v2-admin .icon-small {
+    font-size: 14px;
+}
+
+.zippicks-vibes-v2-admin .icon-medium {
+    font-size: 18px;
+}
+
+.zippicks-vibes-v2-admin .icon-large {
+    font-size: 24px;
+}
+
+.zippicks-vibes-v2-admin .icon-primary {
+    color: var(--zippicks-primary);
+}
+
+.zippicks-vibes-v2-admin .icon-success {
+    color: var(--wp-admin-success);
+}
+
+.zippicks-vibes-v2-admin .icon-error {
+    color: var(--wp-admin-error);
+}
+
+.zippicks-vibes-v2-admin .icon-warning {
+    color: var(--wp-admin-warning);
+}
+
+/* Icon display in admin list */
+.vibe-icon-display {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.vibe-icon-display svg {
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+}
+
+/* Icon selector in edit form */
+.vibe-icon-selector {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.vibe-icon-dropdown {
+    max-width: 200px;
+}
+
+#vibe_icon_preview {
+    width: 40px;
+    height: 40px;
+    background: #333;
+    padding: 8px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#vibe_icon_preview svg {
+    width: 100%;
+    height: 100%;
+    fill: white;
+}
+
+/* Fallback text display */
+.vibe-icon-text {
+    display: inline-block;
+    min-width: 24px;
+    text-align: center;
+    font-size: 12px;
+    color: #666;
+    font-style: italic;
+}

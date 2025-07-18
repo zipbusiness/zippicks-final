@@ -1,0 +1,498 @@
+/**
+ * ZipPicks Footer Component Styles
+ * 
+ * File: /assets/css/components/footer.css
+ * Component: Footer
+ * Dependencies: /assets/css/core/variables.css
+ * 
+ * @package ZipPicks
+ * @subpackage CSS_Components
+ * @since 1.0.0
+ * @version 1.0.2
+ * 
+ * Architecture: Component-based CSS following ZipPicks design system
+ * Naming Convention: BEM with zp- prefix
+ * Responsive: Mobile-first approach
+ * 
+ * CHANGELOG:
+ * v1.0.2 - Fixed variable mapping to match foundation.css, added nuclear CSS specificity
+ */
+
+/* ==========================================================================
+   ZipPicks Footer Component
+   ========================================================================== */
+
+.zp-footer {
+    background-color: var(--zp-primary) !important;
+    color: var(--zp-text-inverse) !important;
+    padding: var(--zp-space-4xl) 0 var(--zp-space-3xl) 0 !important;
+    font-family: var(--zp-font-family-primary) !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+}
+
+/* Container */
+.zp-footer__container {
+    max-width: 1280px !important;
+    margin: 0 auto !important;
+    padding: 0 var(--zp-space-lg) !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Main Content Layout */
+.zp-footer__content {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: var(--zp-space-2xl) !important;
+    margin-bottom: var(--zp-space-3xl) !important;
+    padding: 0 !important;
+    width: 100% !important;
+}
+
+@media (min-width: 768px) {
+    .zp-footer__content {
+        grid-template-columns: 2fr 1fr !important;
+        align-items: start !important;
+    }
+}
+
+/* ==========================================================================
+   Main Content Section
+   ========================================================================== */
+
+.zp-footer__main {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--zp-space-xl) !important;
+}
+
+@media (min-width: 640px) {
+    .zp-footer__main {
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        gap: var(--zp-space-2xl) !important;
+    }
+}
+
+/* ==========================================================================
+   Company Information
+   ========================================================================== */
+
+.zp-footer__company {
+    flex: 1 !important;
+}
+
+.zp-footer__company-name {
+    font-size: var(--zp-text-lg) !important;
+    font-weight: var(--zp-font-bold) !important;
+    margin-bottom: var(--zp-space-md) !important;
+    color: var(--zp-text-inverse) !important;
+}
+
+.zp-footer__tagline {
+    font-size: var(--zp-text-sm) !important;
+    opacity: 0.9 !important;
+    line-height: 1.5 !important;
+    max-width: 300px !important;
+    color: var(--zp-text-inverse) !important;
+}
+
+/* ==========================================================================
+   Footer Links
+   ========================================================================== */
+
+.zp-footer__links {
+    flex: 1 !important;
+    display: flex !important;
+    gap: var(--zp-space-2xl) !important;
+}
+
+.zp-footer__links-group {
+    flex: 1 !important;
+}
+
+.zp-footer__links-title {
+    font-size: var(--zp-text-sm) !important;
+    font-weight: var(--zp-font-semibold) !important;
+    margin-bottom: var(--zp-space-md) !important;
+    color: var(--zp-text-inverse) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+.zp-footer__links-list {
+    list-style: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--zp-space-sm) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.zp-footer__link {
+    color: var(--zp-text-inverse) !important;
+    text-decoration: none !important;
+    font-size: var(--zp-text-sm) !important;
+    opacity: 0.9 !important;
+    transition: all var(--zp-transition-fast) !important;
+    display: inline-block !important;
+}
+
+.zp-footer__link:hover,
+.zp-footer__link:focus {
+    opacity: 1 !important;
+    color: var(--zp-primary-light) !important;
+    transform: translateX(2px) !important;
+    outline: none !important;
+    text-decoration: none !important;
+}
+
+.zp-footer__link:focus {
+    outline: 2px solid var(--zp-primary-light) !important;
+    outline-offset: 2px !important;
+}
+
+/* ==========================================================================
+   Social Media Section
+   ========================================================================== */
+
+.zp-footer__social {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--zp-space-lg) !important;
+    align-items: flex-start !important;
+}
+
+@media (min-width: 768px) {
+    .zp-footer__social {
+        align-items: flex-end !important;
+    }
+}
+
+.zp-footer__social-title {
+    font-size: var(--zp-text-sm) !important;
+    font-weight: var(--zp-font-semibold) !important;
+    color: var(--zp-text-inverse) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+.zp-footer__social-links {
+    display: flex !important;
+    gap: var(--zp-space-xl) !important;
+}
+
+.zp-footer__social-link {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 40px !important;
+    height: 40px !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border-radius: var(--zp-radius-lg) !important;
+    color: var(--zp-text-inverse) !important;
+    text-decoration: none !important;
+    transition: all var(--zp-transition-normal) !important;
+    backdrop-filter: blur(10px) !important;
+}
+
+.zp-footer__social-link:hover,
+.zp-footer__social-link:focus {
+    background-color: var(--zp-primary-light) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(90, 155, 255, 0.3) !important;
+    outline: none !important;
+    text-decoration: none !important;
+}
+
+.zp-footer__social-link:focus {
+    outline: 2px solid var(--zp-text-inverse) !important;
+    outline-offset: 2px !important;
+}
+
+.zp-footer__social-icon {
+    width: 20px !important;
+    height: 20px !important;
+    fill: currentColor !important;
+}
+
+/* ==========================================================================
+   Footer Bottom Section
+   ========================================================================== */
+
+.zp-footer__bottom {
+    border-top: 1px solid rgba(255, 255, 255, 0.2) !important;
+    padding-top: var(--zp-space-2xl) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--zp-space-lg) !important;
+    align-items: center !important;
+    text-align: center !important;
+    margin: 0 !important;
+    width: 100% !important;
+}
+
+@media (min-width: 640px) {
+    .zp-footer__bottom {
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        text-align: left !important;
+    }
+}
+
+.zp-footer__copyright {
+    font-size: var(--zp-text-sm) !important;
+    opacity: 0.8 !important;
+    color: var(--zp-text-inverse) !important;
+}
+
+.zp-footer__legal {
+    display: flex !important;
+    gap: var(--zp-space-2xl) !important;
+    align-items: center !important;
+}
+
+.zp-footer__legal-link {
+    color: var(--zp-text-inverse) !important;
+    text-decoration: none !important;
+    font-size: var(--zp-text-sm) !important;
+    opacity: 0.8 !important;
+    transition: all var(--zp-transition-fast) !important;
+}
+
+.zp-footer__legal-link:hover,
+.zp-footer__legal-link:focus {
+    opacity: 1 !important;
+    color: var(--zp-primary-light) !important;
+    outline: none !important;
+    text-decoration: none !important;
+}
+
+.zp-footer__legal-link:focus {
+    outline: 2px solid var(--zp-primary-light) !important;
+    outline-offset: 2px !important;
+}
+
+/* ==========================================================================
+   Responsive Design
+   ========================================================================== */
+
+@media (max-width: 639px) {
+    .zp-footer__links {
+        flex-direction: column !important;
+        gap: var(--zp-space-xl) !important;
+    }
+    
+    .zp-footer__social {
+        align-items: center !important;
+        text-align: center !important;
+    }
+    
+    .zp-footer__legal {
+        justify-content: center !important;
+        flex-wrap: wrap !important;
+        gap: var(--zp-space-xl) !important;
+    }
+}
+
+/* ==========================================================================
+   Component State Modifiers
+   ========================================================================== */
+
+/* Compact version for special layouts */
+.zp-footer--compact {
+    padding: var(--zp-space-2xl) 0 var(--zp-space-xl) 0 !important;
+}
+
+.zp-footer--compact .zp-footer__content {
+    margin-bottom: var(--zp-space-xl) !important;
+}
+
+/* Dark mode variations (if needed) */
+.zp-footer--dark {
+    background-color: var(--zp-text-primary) !important;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .zp-footer {
+        border-top: 2px solid var(--zp-text-inverse) !important;
+    }
+    
+    .zp-footer__link:focus,
+    .zp-footer__legal-link:focus,
+    .zp-footer__social-link:focus {
+        outline: 3px solid var(--zp-text-inverse) !important;
+        outline-offset: 3px !important;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .zp-footer__link,
+    .zp-footer__legal-link,
+    .zp-footer__social-link {
+        transition: none !important;
+    }
+    
+    .zp-footer__link:hover,
+    .zp-footer__social-link:hover {
+        transform: none !important;
+    }
+}
+
+/* Print styles */
+@media print {
+    .zp-footer {
+        background: transparent !important;
+        color: black !important;
+        box-shadow: none !important;
+    }
+    
+    .zp-footer__social {
+        display: none !important;
+    }
+    
+    .zp-footer__link,
+    .zp-footer__legal-link {
+        color: black !important;
+        text-decoration: underline !important;
+    }
+}
+
+/* ==========================================================================
+   NUCLEAR CSS OVERRIDES - MAXIMUM SPECIFICITY
+   GeneratePress + WordPress Theme Integration
+   ========================================================================== */
+
+/* NUCLEAR: Override any and all GeneratePress footer styling */
+body .site-footer,
+html body .site-footer,
+#page .site-footer,
+.site .site-footer {
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    min-height: auto !important;
+    box-shadow: none !important;
+}
+
+/* NUCLEAR: Hide all GeneratePress footer elements */
+body .site-footer > *:not(.zp-footer),
+html body .site-footer > *:not(.zp-footer),
+#page .site-footer > *:not(.zp-footer) {
+    display: none !important;
+}
+
+/* NUCLEAR: Force ZipPicks footer to display properly */
+body .site-footer .zp-footer,
+html body .site-footer .zp-footer,
+#page .site-footer .zp-footer,
+.site .site-footer .zp-footer {
+    display: block !important;
+    background-color: var(--zp-primary) !important;
+    width: 100% !important;
+    padding: var(--zp-space-4xl) 0 var(--zp-space-3xl) 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* NUCLEAR: Override any GeneratePress container/wrapper padding */
+body .site-footer .zp-footer__container,
+html body .site-footer .zp-footer__container,
+#page .site-footer .zp-footer__container {
+    max-width: 1280px !important;
+    margin: 0 auto !important;
+    padding: 0 var(--zp-space-lg) !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* NUCLEAR: Force override any theme-level spacing */
+body .site-footer .zp-footer,
+html body .site-footer .zp-footer,
+#page .site-footer .zp-footer,
+.site .site-footer .zp-footer {
+    padding-top: var(--zp-space-4xl) !important;
+    padding-bottom: var(--zp-space-3xl) !important;
+}
+
+/* NUCLEAR: Additional GeneratePress overrides */
+.generate-sidebar,
+.site-footer .generate-sidebar,
+body .site-footer .generate-sidebar {
+    display: none !important;
+}
+
+/* NUCLEAR: Override GeneratePress footer widget styling */
+.footer-widgets,
+.site-footer .footer-widgets,
+body .site-footer .footer-widgets {
+    display: none !important;
+}
+
+/* NUCLEAR: Override any clearfix issues */
+.site-footer:after,
+.site-footer:before,
+body .site-footer:after,
+body .site-footer:before {
+    content: none !important;
+    display: none !important;
+}
+
+/* NUCLEAR: Override WordPress block editor spacing */
+body .site-footer .wp-site-blocks,
+html body .site-footer .wp-site-blocks {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* NUCLEAR: Override GeneratePress grid container */
+body .site-footer .grid-container,
+html body .site-footer .grid-container {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* NUCLEAR: Override GeneratePress inside-container */
+body .site-footer .inside-container,
+html body .site-footer .inside-container {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* NUCLEAR: Override any inline styles that might be added by plugins */
+body .site-footer[style],
+html body .site-footer[style] {
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* NUCLEAR: Final fallback for specific footer spacing issues */
+body .zp-footer .zp-footer__content,
+html body .zp-footer .zp-footer__content {
+    margin-bottom: var(--zp-space-3xl) !important;
+    padding: 0 !important;
+}
+
+body .zp-footer .zp-footer__bottom,
+html body .zp-footer .zp-footer__bottom {
+    padding-top: var(--zp-space-2xl) !important;
+    margin: 0 !important;
+}
+
+body .zp-footer .zp-footer__social-links,
+html body .zp-footer .zp-footer__social-links {
+    gap: var(--zp-space-xl) !important;
+}
+
+body .zp-footer .zp-footer__legal,
+html body .zp-footer .zp-footer__legal {
+    gap: var(--zp-space-2xl) !important;
+}

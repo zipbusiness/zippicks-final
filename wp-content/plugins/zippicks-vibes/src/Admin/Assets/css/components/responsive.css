@@ -1,0 +1,142 @@
+/**
+ * Responsive Design
+ * 
+ * @package ZipPicksVibesV2
+ */
+
+/* Mobile styles */
+@media (max-width: 782px) {
+    .zippicks-vibes-v2-admin .zippicks-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .zippicks-vibes-v2-admin .header-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .zippicks-vibes-v2-admin .widefat td,
+    .zippicks-vibes-v2-admin .widefat th {
+        padding: 8px 6px;
+        font-size: 14px;
+    }
+    
+    .zippicks-vibes-v2-admin .form-table th {
+        width: auto;
+        padding-right: 0;
+    }
+    
+    .zippicks-vibes-v2-admin .form-table th,
+    .zippicks-vibes-v2-admin .form-table td {
+        display: block;
+        width: 100%;
+        padding: 10px 0;
+    }
+    
+    .zippicks-vibes-v2-admin .form-field input,
+    .zippicks-vibes-v2-admin .form-field textarea,
+    .zippicks-vibes-v2-admin .form-field select {
+        max-width: 100%;
+    }
+    
+    .zippicks-vibes-v2-admin .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .zippicks-vibes-v2-admin .modal-content {
+        margin: 10px;
+        max-height: calc(100vh - 20px);
+    }
+    
+    .zippicks-vibes-v2-admin .bulk-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    
+    .zippicks-vibes-v2-admin .color-field {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* Tablet styles */
+@media (min-width: 783px) and (max-width: 1024px) {
+    .zippicks-vibes-v2-admin .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .zippicks-vibes-v2-admin .form-table th {
+        width: 150px;
+    }
+}
+
+/* Desktop styles */
+@media (min-width: 1025px) {
+    .zippicks-vibes-v2-admin .dashboard-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .zippicks-vibes-v2-admin .widefat {
+        font-size: 14px;
+    }
+}
+
+/* Wide screen styles */
+@media (min-width: 1200px) {
+    .zippicks-vibes-v2-admin .dashboard-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .zippicks-vibes-v2-admin .zippicks-header {
+        padding-bottom: 20px;
+        margin-bottom: 25px;
+    }
+}
+
+/* Container queries for modern browsers */
+@container (max-width: 600px) {
+    .zippicks-vibes-v2-admin .card-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@container (min-width: 601px) and (max-width: 900px) {
+    .zippicks-vibes-v2-admin .card-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@container (min-width: 901px) {
+    .zippicks-vibes-v2-admin .card-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Print styles */
+@media print {
+    .zippicks-vibes-v2-admin .no-print,
+    .zippicks-vibes-v2-admin .header-actions,
+    .zippicks-vibes-v2-admin .bulk-actions,
+    .zippicks-vibes-v2-admin .modal {
+        display: none !important;
+    }
+    
+    .zippicks-vibes-v2-admin {
+        background: white !important;
+        color: black !important;
+    }
+    
+    .zippicks-vibes-v2-admin .widefat {
+        border-collapse: collapse;
+    }
+    
+    .zippicks-vibes-v2-admin .widefat th,
+    .zippicks-vibes-v2-admin .widefat td {
+        border: 1px solid #000;
+        padding: 8px;
+    }
+}

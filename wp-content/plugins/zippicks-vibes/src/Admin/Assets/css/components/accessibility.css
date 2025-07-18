@@ -1,0 +1,126 @@
+/**
+ * Accessibility Improvements
+ * 
+ * @package ZipPicksVibesV2
+ */
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .zippicks-vibes-v2-admin {
+        --wp-admin-theme-color: #0000ff;
+        --wp-admin-border-color: #000000;
+        --wp-admin-text: #000000;
+        --wp-admin-background: #ffffff;
+    }
+    
+    .zippicks-vibes-v2-admin .button {
+        border: 2px solid #000000;
+    }
+    
+    .zippicks-vibes-v2-admin input,
+    .zippicks-vibes-v2-admin textarea,
+    .zippicks-vibes-v2-admin select {
+        border: 2px solid #000000;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .zippicks-vibes-v2-admin * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    .zippicks-vibes-v2-admin .sortable {
+        transition: none;
+    }
+}
+
+/* Focus indicators */
+.zippicks-vibes-v2-admin button:focus,
+.zippicks-vibes-v2-admin input:focus,
+.zippicks-vibes-v2-admin textarea:focus,
+.zippicks-vibes-v2-admin select:focus,
+.zippicks-vibes-v2-admin a:focus {
+    outline: 2px solid var(--wp-admin-theme-color);
+    outline-offset: 2px;
+}
+
+/* Skip links */
+.zippicks-vibes-v2-admin .skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: var(--wp-admin-theme-color);
+    color: white;
+    padding: 8px;
+    text-decoration: none;
+    z-index: 100000;
+}
+
+.zippicks-vibes-v2-admin .skip-link:focus {
+    top: 6px;
+}
+
+/* ARIA live regions */
+.zippicks-vibes-v2-admin .aria-live {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+/* Focus trap for modals */
+.zippicks-vibes-v2-admin .modal.focus-trap {
+    position: relative;
+}
+
+.zippicks-vibes-v2-admin .modal.focus-trap::before,
+.zippicks-vibes-v2-admin .modal.focus-trap::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+}
+
+/* Enhanced keyboard navigation */
+.zippicks-vibes-v2-admin [tabindex="-1"]:focus {
+    outline: none;
+}
+
+.zippicks-vibes-v2-admin .keyboard-navigation button:focus,
+.zippicks-vibes-v2-admin .keyboard-navigation input:focus,
+.zippicks-vibes-v2-admin .keyboard-navigation select:focus {
+    box-shadow: 0 0 0 2px var(--wp-admin-theme-color);
+}
+
+/* Screen reader improvements */
+.zippicks-vibes-v2-admin .screen-reader-text {
+    position: absolute !important;
+    height: 1px;
+    width: 1px;
+    overflow: hidden;
+    clip: rect(1px, 1px, 1px, 1px);
+    word-wrap: normal !important;
+}
+
+.zippicks-vibes-v2-admin .screen-reader-text:focus {
+    background-color: #f1f1f1;
+    border-radius: 3px;
+    box-shadow: 0 0 2px 2px rgba(0, 0, 0, 0.6);
+    clip: auto !important;
+    color: #21759b;
+    display: block;
+    font-size: 14px;
+    font-weight: bold;
+    height: auto;
+    left: 5px;
+    line-height: normal;
+    padding: 15px 23px 14px;
+    text-decoration: none;
+    top: 5px;
+    width: auto;
+    z-index: 100000;
+}
