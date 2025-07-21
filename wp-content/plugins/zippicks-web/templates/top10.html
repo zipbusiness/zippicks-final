@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="top10-header">
+    <div class="container">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <ol class="breadcrumb-list">
+                <li class="breadcrumb-item"><a href="/">Home</a></li>
+                <li class="breadcrumb-item"><a href="/city/{{ city_slug }}">{{ city_name }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ category_name }}</li>
+            </ol>
+        </nav>
+        
+        <h1 class="page-title">Top 10 {{ category_name }} Restaurants in {{ city_name }}</h1>
+        
+        <div class="list-meta">
+            <span class="meta-item">
+                <svg class="icon" width="16" height="16" viewBox="0 0 16 16">
+                    <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+                    <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+                </svg>
+                Last updated: {{ cache_timestamp }}
+            </span>
+            {% if from_cache %}
+            <span class="meta-item cache-indicator">
+                <svg class="icon" width="16" height="16" viewBox="0 0 16 16">
+                    <path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5l2.404.961L10.404 2l-2.218-.887zm3.564 1.426L5.596 5 8 5.961 14.154 3.5l-2.404-.961zm3.25 1.7-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.762V6.838L1 4.239v7.923l6.5 2.6zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.662a1 1 0 0 1-.629.928l-7.185 2.874a.5.5 0 0 1-.372 0L.63 13.09a1 1 0 0 1-.63-.928V3.5a.5.5 0 0 1 .314-.464L7.443.184z"/>
+                </svg>
+                Cached Results
+            </span>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="restaurant-list">
+    <div class="container">
+        <div class="list-container">
+            {% for restaurant in restaurants %}
+            <article class="restaurant-card" data-rank="{{ restaurant.rank }}">
+                <div class="rank-badge">
+                    <span class="rank-number">{{ restaurant.rank }}</span>
+                </div>
+                
+                <div class="restaurant-content">
+                    <header class="restaurant-header">
+                        <h2 class="restaurant-name">
+                            <a href="/restaurant/{{ restaurant.zpid }}">{{ restaurant.name }}</a>
+                        </h2>
+                        <div class="restaurant-meta">
+                            <span class="price-range">{{ restaurant.price_range }}</span>
+                            {% if restaurant.cuisine_type %}
+                            <span class="cuisine-type">{{ restaurant.cuisine_type }}</span>
+                            {% endif %}
+                        </div>
+                    </header>
+                    
+                    <address class="restaurant-address">{{ restaurant.address }}</address>
+                    
+                    <div class="restaurant-details">
+                        <p class="reasoning">{{ restaurant.reasoning }}</p>
+                        
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">Best For:</span>
+                                <span class="detail-value">{{ restaurant.best_for }}</span>
+                            </div>
+                            {% if restaurant.must_try_dish %}
+                            <div class="detail-item">
+                                <span class="detail-label">Must Try:</span>
+                                <span class="detail-value">{{ restaurant.must_try_dish }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <footer class="restaurant-footer">
+                        <a href="/restaurant/{{ restaurant.zpid }}" class="btn btn-outline">
+                            View Details
+                            <span class="btn-arrow">→</span>
+                        </a>
+                    </footer>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        
+        <div class="list-actions">
+            <button class="btn btn-secondary" onclick="window.print()">
+                <svg class="icon" width="16" height="16" viewBox="0 0 16 16">
+                    <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/>
+                    <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z"/>
+                </svg>
+                Print List
+            </button>
+            
+            <button class="btn btn-secondary" id="shareButton">
+                <svg class="icon" width="16" height="16" viewBox="0 0 16 16">
+                    <path d="M11 2.5a2.5 2.5 0 1 1 .603 1.628l-6.718 3.12a2.499 2.499 0 0 1 0 1.504l6.718 3.12a2.5 2.5 0 1 1-.488.876l-6.718-3.12a2.5 2.5 0 1 1 0-3.256l6.718-3.12A2.5 2.5 0 0 1 11 2.5z"/>
+                </svg>
+                Share
+            </button>
+        </div>
+    </div>
+</section>
+
+<section class="explore-more">
+    <div class="container">
+        <h2 class="section-title">Explore More</h2>
+        <div class="explore-grid">
+            <a href="/" class="explore-card">
+                <h3 class="explore-title">Try Another Search</h3>
+                <p class="explore-text">Find restaurants in different cities or categories</p>
+            </a>
+            
+            <a href="/city/{{ city_slug }}" class="explore-card">
+                <h3 class="explore-title">Explore {{ city_name }}</h3>
+                <p class="explore-text">Discover more about the {{ city_name }} dining scene</p>
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block structured_data %}
+{{ super() }}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": "Top 10 {{ category_name }} Restaurants in {{ city_name }}",
+    "description": "Expert recommendations for the best {{ category_name.lower() }} restaurants in {{ city_name }}",
+    "numberOfItems": {{ restaurants|length }},
+    "itemListElement": [
+        {% for restaurant in restaurants %}
+        {
+            "@type": "ListItem",
+            "position": {{ restaurant.rank }},
+            "item": {
+                "@type": "Restaurant",
+                "name": "{{ restaurant.name }}",
+                "address": {
+                    "@type": "PostalAddress",
+                    "streetAddress": "{{ restaurant.address }}"
+                },
+                "priceRange": "{{ restaurant.price_range }}",
+                {% if restaurant.cuisine_type %}
+                "servesCuisine": "{{ restaurant.cuisine_type }}",
+                {% endif %}
+                "description": "{{ restaurant.reasoning }}"
+            }
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+}
+</script>
+{% endblock %}

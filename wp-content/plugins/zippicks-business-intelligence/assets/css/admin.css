@@ -1,0 +1,220 @@
+/**
+ * Business Intelligence Admin CSS
+ */
+
+/* Dashboard Cards */
+.zippicks-bi-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.zippicks-bi-cards .card {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.zippicks-bi-cards .card h2 {
+    margin-top: 0;
+    font-size: 18px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+/* Status Indicators */
+.status-indicator {
+    display: flex;
+    align-items: center;
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.status-indicator .dashicons {
+    margin-right: 5px;
+    font-size: 20px;
+}
+
+.status-indicator.healthy {
+    color: #46b450;
+}
+
+.status-indicator.unhealthy {
+    color: #dc3232;
+}
+
+.status-indicator.degraded {
+    color: #ffb900;
+}
+
+/* Statistics Table */
+.stats-table {
+    width: 100%;
+}
+
+.stats-table td {
+    padding: 5px 0;
+}
+
+.stats-table td:first-child {
+    color: #666;
+}
+
+.stats-table .error {
+    color: #dc3232;
+}
+
+/* Action Buttons */
+.zippicks-bi-actions {
+    margin: 30px 0;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+/* Search Form */
+.zippicks-bi-search {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.search-form {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+#search-results {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+/* Cities Page */
+.cities-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.city-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    text-align: center;
+}
+
+.city-card h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.city-card .business-count {
+    font-size: 24px;
+    font-weight: bold;
+    color: #0073aa;
+}
+
+.city-card .last-updated {
+    font-size: 12px;
+    color: #666;
+    margin-top: 10px;
+}
+
+/* API Logs */
+.logs-table {
+    margin-top: 20px;
+}
+
+.logs-table .success {
+    color: #46b450;
+}
+
+.logs-table .error {
+    color: #dc3232;
+}
+
+.logs-table .response-time {
+    font-family: monospace;
+}
+
+/* Settings Page */
+.settings-card {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.settings-card h2 {
+    margin-top: 0;
+}
+
+.settings-card pre {
+    background: #f5f5f5;
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 13px;
+}
+
+/* Widget Styles */
+.zippicks-bi-widget .status-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.zippicks-bi-widget .status-item {
+    display: flex;
+    justify-content: space-between;
+}
+
+.zippicks-bi-widget .status-item .label {
+    color: #666;
+}
+
+.zippicks-bi-widget .status-item .value {
+    font-weight: bold;
+}
+
+.zippicks-bi-widget .status-item .value.healthy {
+    color: #46b450;
+}
+
+.zippicks-bi-widget .status-item .value.unhealthy {
+    color: #dc3232;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+    .zippicks-bi-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .search-form {
+        flex-direction: column;
+    }
+    
+    .cities-grid {
+        grid-template-columns: 1fr;
+    }
+}

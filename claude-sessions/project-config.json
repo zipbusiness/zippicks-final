@@ -1,0 +1,13 @@
+{
+  "project": "ZipPicks",
+  "description": "$100B Enterprise Content Discovery Platform",
+  "architecture": "WordPress plugin-based system",
+  "session_count": 0,
+  "last_session": null,
+  "key_features": [
+    "Enterprise content discovery",
+    "AI-powered recommendations", 
+    "Real-time analytics",
+    "Multi-tenant architecture"
+  ]
+}

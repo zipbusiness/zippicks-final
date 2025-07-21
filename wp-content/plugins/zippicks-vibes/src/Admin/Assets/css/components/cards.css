@@ -1,0 +1,40 @@
+/**
+ * Card Components
+ * 
+ * @package ZipPicksVibesV2
+ */
+
+.zippicks-vibes-v2-admin .card {
+    background: var(--wp-admin-background-white);
+    border: 1px solid var(--wp-admin-border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-small);
+    overflow: hidden;
+    transition: all var(--transition-fast);
+}
+
+.zippicks-vibes-v2-admin .card:hover {
+    box-shadow: var(--shadow-medium);
+}
+
+.zippicks-vibes-v2-admin .card-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--wp-admin-border-color);
+    background: var(--wp-admin-background);
+}
+
+.zippicks-vibes-v2-admin .card-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--wp-admin-text);
+}
+
+.zippicks-vibes-v2-admin .card-body {
+    padding: 20px;
+}
+
+.zippicks-vibes-v2-admin .card-footer {
+    padding: 15px 20px;
+    border-top: 1px solid var(--wp-admin-border-color);
+    background: var(--wp-admin-background);
+}

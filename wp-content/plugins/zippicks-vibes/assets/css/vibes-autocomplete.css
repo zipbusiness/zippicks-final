@@ -1,0 +1,110 @@
+/**
+ * ZipPicks Vibes Autocomplete Styles
+ * Enterprise-grade styling for the vibes autocomplete component
+ * 
+ * @package ZipPicksVibes
+ * @version 1.0.0
+ */
+
+/* ==========================================================================
+   Autocomplete Item Styles
+   ========================================================================== */
+
+.vibes-autocomplete-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid #f5f5f5;
+    transition: background-color 0.15s ease;
+}
+
+.vibes-autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.vibes-autocomplete-item:hover,
+.vibes-autocomplete-item.selected {
+    background-color: #f8f9ff;
+}
+
+/* ==========================================================================
+   Vibe Icon Styles
+   ========================================================================== */
+
+.vibe-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Vibe Information
+   ========================================================================== */
+
+.vibe-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.vibe-name {
+    font-weight: 500;
+    color: #194FAD;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   Color Indicator
+   ========================================================================== */
+
+.vibe-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 2px solid white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+
+/* ==========================================================================
+   Empty State
+   ========================================================================== */
+
+.vibes-autocomplete-empty {
+    padding: 16px;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+/* ==========================================================================
+   Mobile Responsive
+   ========================================================================== */
+
+@media (max-width: 480px) {
+    .vibes-autocomplete-item {
+        padding: 10px 12px;
+    }
+    
+    .vibe-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+        margin-right: 10px;
+    }
+    
+    .vibe-name {
+        font-size: 14px;
+    }
+}

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
+    <title>{% block title %}{{ page_title | default('ZipPicks - AI-Powered Restaurant Recommendations') }}{% endblock %}</title>
+    <meta name="description" content="{% block description %}{{ meta_description | default('Discover the best restaurants in your city with AI-powered recommendations from ZipPicks Master Critic.') }}{% endblock %}">
+    
+    <!-- Canonical URL -->
+    {% if canonical_url %}
+    <link rel="canonical" href="{{ canonical_url }}">
+    {% endif %}
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="{{ page_title | default('ZipPicks') }}">
+    <meta property="og:description" content="{{ meta_description | default('AI-powered restaurant recommendations') }}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ canonical_url | default(request.url) }}">
+    {% if og_image %}
+    <meta property="og:image" content="{{ og_image }}">
+    {% endif %}
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ page_title | default('ZipPicks') }}">
+    <meta name="twitter:description" content="{{ meta_description | default('AI-powered restaurant recommendations') }}">
+    {% if og_image %}
+    <meta name="twitter:image" content="{{ og_image }}">
+    {% endif %}
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+    
+    <!-- Preconnect to external domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Skip to main content -->
+    <a href="#main" class="skip-link">Skip to main content</a>
+    
+    <!-- Header -->
+    <header class="site-header">
+        <div class="container">
+            <nav class="navbar" role="navigation" aria-label="Main navigation">
+                <div class="navbar-brand">
+                    <a href="/" class="logo">
+                        <span class="logo-text">ZipPicks</span>
+                        <span class="logo-tagline">Master Critic</span>
+                    </a>
+                </div>
+                
+                <button class="navbar-toggle" aria-label="Toggle navigation" aria-expanded="false">
+                    <span class="hamburger"></span>
+                    <span class="hamburger"></span>
+                    <span class="hamburger"></span>
+                </button>
+                
+                <div class="navbar-menu">
+                    <ul class="navbar-nav">
+                        <li class="nav-item">
+                            <a href="/" class="nav-link">Home</a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <button class="nav-link dropdown-toggle" aria-expanded="false">
+                                Cities
+                            </button>
+                            <ul class="dropdown-menu">
+                                {% for city in cities[:5] %}
+                                <li><a href="/city/{{ city.slug }}" class="dropdown-link">{{ city.name }}</a></li>
+                                {% endfor %}
+                                <li class="dropdown-divider"></li>
+                                <li><a href="/#cities" class="dropdown-link">View All Cities</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item">
+                            <a href="/about" class="nav-link">About</a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main id="main" class="site-main">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3 class="footer-title">{{ app_name }}</h3>
+                    <p class="footer-text">AI-powered restaurant recommendations to help you discover your next favorite dining experience.</p>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="footer-subtitle">Popular Cities</h4>
+                    <ul class="footer-links">
+                        {% for city in cities[:6] %}
+                        <li><a href="/city/{{ city.slug }}">{{ city.name }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="footer-subtitle">Categories</h4>
+                    <ul class="footer-links">
+                        <li><a href="/#categories">Best Overall</a></li>
+                        <li><a href="/#categories">Date Night</a></li>
+                        <li><a href="/#categories">Family Friendly</a></li>
+                        <li><a href="/#categories">Fine Dining</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4 class="footer-subtitle">Connect</h4>
+                    <ul class="footer-links">
+                        <li><a href="/contact">Contact Us</a></li>
+                        <li><a href="/privacy">Privacy Policy</a></li>
+                        <li><a href="/terms">Terms of Service</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; {{ current_year }} {{ app_name }}. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+    
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" aria-hidden="true">
+        <div class="spinner">
+            <div class="spinner-ring"></div>
+            <p class="spinner-text">Finding the best restaurants...</p>
+        </div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script src="/static/js/main.js"></script>
+    {% block extra_scripts %}{% endblock %}
+    
+    <!-- JSON-LD Structured Data -->
+    {% block structured_data %}
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "{{ app_name }}",
+        "url": "https://zippicks.com",
+        "description": "AI-powered restaurant recommendations",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://zippicks.com/search?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
+    }
+    </script>
+    {% endblock %}
+</body>
+</html>

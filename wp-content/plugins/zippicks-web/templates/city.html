@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="city-hero">
+    <div class="container">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+            <ol class="breadcrumb-list">
+                <li class="breadcrumb-item"><a href="/">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ city.name }}</li>
+            </ol>
+        </nav>
+        
+        <h1 class="city-title">{{ city.name }} Dining Guide</h1>
+        <p class="city-subtitle">Discover the best restaurants in {{ city.name }}, {{ city.state }}</p>
+    </div>
+</section>
+
+<section class="city-overview">
+    <div class="container">
+        <div class="overview-content">
+            <h2 class="section-title">About {{ city.name }}'s Dining Scene</h2>
+            <p class="overview-text">{{ city_data.overview }}</p>
+            
+            {% if city_data.error %}
+            <div class="alert alert-info">
+                <p>{{ city_data.error }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<section class="neighborhoods">
+    <div class="container">
+        <h2 class="section-title">Popular Dining Neighborhoods</h2>
+        <div class="neighborhood-grid">
+            {% for neighborhood in city_data.neighborhoods %}
+            <div class="neighborhood-card">
+                <h3 class="neighborhood-name">{{ neighborhood.name }}</h3>
+                <p class="neighborhood-description">{{ neighborhood.description }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<section class="cuisine-trends">
+    <div class="container">
+        <h2 class="section-title">Trending Cuisines</h2>
+        <div class="cuisine-list">
+            {% for cuisine in city_data.trending_cuisines %}
+            <span class="cuisine-tag">{{ cuisine }}</span>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+{% if city_data.price_distribution %}
+<section class="price-insights">
+    <div class="container">
+        <h2 class="section-title">Price Distribution</h2>
+        <div class="price-chart">
+            {% for price, percentage in city_data.price_distribution.items() %}
+            <div class="price-bar">
+                <span class="price-label">{{ price }}</span>
+                <div class="price-progress">
+                    <div class="price-fill" style="width: {{ percentage }}%"></div>
+                </div>
+                <span class="price-percent">{{ percentage }}%</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<section class="category-links">
+    <div class="container">
+        <h2 class="section-title">Explore {{ city.name }} by Category</h2>
+        <div class="category-grid">
+            {% for category in categories[:8] %}
+            <a href="/top10/{{ city.slug }}/{{ category.slug }}" class="category-link-card">
+                <span class="category-icon">{{ category.icon }}</span>
+                <h3 class="category-name">{{ category.name }}</h3>
+                <span class="category-arrow">→</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<section class="city-cta">
+    <div class="container">
+        <div class="cta-box">
+            <h2 class="cta-title">Ready to Find Your Perfect Restaurant?</h2>
+            <p class="cta-text">Let our AI-powered Master Critic help you discover the best dining experiences in {{ city.name }}.</p>
+            <form class="inline-form" action="/generate-list" method="POST">
+                <input type="hidden" name="city" value="{{ city.slug }}">
+                <select name="category" class="form-select" required>
+                    <option value="">Choose a category...</option>
+                    {% for category in categories %}
+                    <option value="{{ category.slug }}">{{ category.icon }} {{ category.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-primary">Get Recommendations</button>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block structured_data %}
+{{ super() }}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "City",
+    "name": "{{ city.name }}",
+    "containedInPlace": {
+        "@type": "State",
+        "name": "{{ city.state }}"
+    },
+    "description": "{{ city_data.overview[:160] }}..."
+}
+</script>
+{% endblock %}
