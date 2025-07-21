@@ -227,7 +227,7 @@ class TGC_API_Client {
      */
     private function make_request($endpoint, $method = 'POST', $data = null, $timeout = null) {
         $url = $this->api_url . ltrim($endpoint, '/');
-        $timeout = $timeout ?: $this->timeout;
+        $timeout = $timeout !== null ? $timeout : $this->timeout;
         
         // Get API key
         $api_key = get_option('tgc_api_key', '');

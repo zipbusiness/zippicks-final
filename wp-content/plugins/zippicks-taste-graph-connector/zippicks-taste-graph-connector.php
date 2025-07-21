@@ -24,6 +24,8 @@ define('TGC_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('TGC_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
 // Load configuration from wp-config.php or default values
+// For testing, you can define TGC_API_URL_OVERRIDE in wp-config.php:
+// define('TGC_API_URL_OVERRIDE', 'https://zipbusiness-api-test.onrender.com');
 define('TGC_API_URL', defined('TGC_API_URL_OVERRIDE') ? TGC_API_URL_OVERRIDE : 'https://zipbusiness-api.onrender.com');
 
 // JWT Secret with validation to ensure it's never empty

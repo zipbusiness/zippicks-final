@@ -309,7 +309,8 @@ class TGC_Session_Tracker {
      */
     public static function get_fingerprint_hash($session_id) {
         $transient_key = self::get_transient_key($session_id);
-        return get_transient($transient_key) ?: null;
+        $result = get_transient($transient_key);
+        return $result !== false ? $result : null;
     }
     
     /**
