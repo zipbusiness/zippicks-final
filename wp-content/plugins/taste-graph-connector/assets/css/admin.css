@@ -1,0 +1,220 @@
+/**
+ * Taste Graph Connector Admin Styles
+ * 
+ * @package TasteGraphConnector
+ * @since 1.0.0
+ */
+
+/* Tab Navigation */
+.tgc-settings-tabs .nav-tab-wrapper {
+    margin-bottom: 20px;
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Status Indicators */
+.status-ok {
+    color: #46b450;
+    font-weight: 600;
+}
+
+.status-error {
+    color: #dc3232;
+    font-weight: 600;
+}
+
+.status-warning {
+    color: #ffb900;
+    font-weight: 600;
+}
+
+/* Status Table */
+.tgc-status-table {
+    margin-top: 20px;
+    max-width: 800px;
+}
+
+.tgc-status-table th {
+    font-weight: 600;
+    width: 200px;
+    background-color: #f6f7f7;
+}
+
+.tgc-status-table td {
+    padding: 12px;
+}
+
+/* Form Enhancements */
+.form-table th {
+    width: 250px;
+}
+
+.form-table td fieldset label {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.form-table .description {
+    font-style: normal;
+    color: #646970;
+    margin-top: 4px;
+}
+
+/* Buttons */
+#test-api-connection,
+#generate-jwt-secret,
+#clear-cache,
+#process-queue {
+    margin-left: 10px;
+}
+
+/* API Test Result */
+#api-test-result {
+    display: inline-block;
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+#api-test-result .spinner {
+    float: none;
+    margin: 0;
+}
+
+/* Settings Sections */
+.tgc-settings-section {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.tgc-settings-section h3 {
+    margin-top: 0;
+    border-bottom: 1px solid #dcdcde;
+    padding-bottom: 10px;
+}
+
+/* Widget Style */
+.tgc-status-widget {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px;
+    margin: 20px 0;
+    max-width: 600px;
+}
+
+.tgc-status-widget h2 {
+    margin-top: 0;
+    font-size: 18px;
+}
+
+.tgc-status-widget p {
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+/* Queue Status */
+.queue-status {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.queue-status.pending {
+    background-color: #f0f0f1;
+    color: #50575e;
+}
+
+.queue-status.processing {
+    background-color: #f0f6fc;
+    color: #0073aa;
+}
+
+.queue-status.completed {
+    background-color: #edfaef;
+    color: #1d7e2d;
+}
+
+.queue-status.failed {
+    background-color: #fef1f1;
+    color: #a00;
+}
+
+/* Responsive */
+@media screen and (max-width: 782px) {
+    .form-table th,
+    .tgc-status-table th {
+        width: auto;
+        display: block;
+        padding-bottom: 0;
+    }
+    
+    .form-table td {
+        padding-left: 0;
+    }
+    
+    .nav-tab-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+    }
+    
+    .nav-tab {
+        flex: 1 1 auto;
+        text-align: center;
+    }
+}
+
+/* Debug Mode Indicator */
+.tgc-debug-mode-active {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #ffb900;
+    color: #000;
+    padding: 8px 12px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    z-index: 9999;
+}
+
+/* Loading States */
+.tgc-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.tgc-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 2px solid #3498db;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

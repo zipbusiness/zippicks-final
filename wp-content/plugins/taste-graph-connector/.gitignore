@@ -1,0 +1,39 @@
+# Composer
+/vendor/
+composer.lock
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build
+/build/
+/dist/
+
+# Testing
+/coverage/
+.phpunit.result.cache
+
+# Environment
+.env
+.env.*
+
+# WordPress
+*.log
+wp-config.php
+
+# Cache
+.cache/
+
+# Temporary files
+*.tmp
+*.temp
