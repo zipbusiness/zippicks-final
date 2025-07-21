@@ -18,10 +18,6 @@ if (!defined('ABSPATH')) {
  */
 class TGC_Admin_Settings {
     
-    /**
-     * Settings page hook suffix
-     */
-    private static $hook_suffix = '';
     
     /**
      * Render settings page
@@ -151,7 +147,7 @@ class TGC_Admin_Settings {
                                         value="<?php echo esc_url($settings['api_url']); ?>" 
                                         class="regular-text" required />
                                     <p class="description">
-                                        <?php _e('ZipBusiness API endpoint URL (e.g., https://api.zipbusiness.com/v1)', 'taste-graph-connector'); ?>
+                                        <?php _e('ZipBusiness API endpoint URL (e.g., https://zipbusiness-api.onrender.com)', 'taste-graph-connector'); ?>
                                     </p>
                                     <p>
                                         <button type="button" class="button" id="test-api-connection">
@@ -501,8 +497,10 @@ class TGC_Admin_Settings {
             function generateRandomString(length) {
                 var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
                 var result = '';
+                var array = new Uint32Array(length);
+                window.crypto.getRandomValues(array);
                 for (var i = 0; i < length; i++) {
-                    result += chars.charAt(Math.floor(Math.random() * chars.length));
+                    result += chars.charAt(array[i] % chars.length);
                 }
                 return result;
             }
@@ -519,7 +517,7 @@ class TGC_Admin_Settings {
             'enabled' => true,
             'tracking_enabled' => true,
             'debug_mode' => false,
-            'api_url' => 'https://api.zipbusiness.com/v1',
+            'api_url' => 'https://zipbusiness-api.onrender.com',
             'api_key' => '',
             'jwt_secret' => '',
             'track_views' => true,
@@ -618,6 +616,7 @@ class TGC_Admin_Settings {
                 $redis = new Redis();
                 if ($redis->connect(TGC_REDIS_HOST, TGC_REDIS_PORT, 2.0)) {
                     $redis_status = 'Connected';
+                    $redis->close();
                 } else {
                     $redis_status = 'Connection failed';
                 }

@@ -24,8 +24,22 @@ define('TGC_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('TGC_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
 // Load configuration from wp-config.php or default values
-define('TGC_API_URL', defined('TGC_API_URL_OVERRIDE') ? TGC_API_URL_OVERRIDE : 'https://api.zipbusiness.com/v1');
-define('TGC_JWT_SECRET', defined('TGC_JWT_SECRET_OVERRIDE') ? TGC_JWT_SECRET_OVERRIDE : get_option('tgc_jwt_secret', ''));
+define('TGC_API_URL', defined('TGC_API_URL_OVERRIDE') ? TGC_API_URL_OVERRIDE : 'https://zipbusiness-api.onrender.com');
+
+// JWT Secret with validation to ensure it's never empty
+$jwt_secret = '';
+if (defined('TGC_JWT_SECRET_OVERRIDE') && TGC_JWT_SECRET_OVERRIDE) {
+    $jwt_secret = TGC_JWT_SECRET_OVERRIDE;
+} else {
+    $jwt_secret = get_option('tgc_jwt_secret', '');
+    
+    // Generate and store a new secret if none exists
+    if (empty($jwt_secret)) {
+        $jwt_secret = wp_generate_password(64, true, true);
+        update_option('tgc_jwt_secret', $jwt_secret);
+    }
+}
+define('TGC_JWT_SECRET', $jwt_secret);
 
 // Redis configuration (optional)
 define('TGC_REDIS_ENABLED', defined('TGC_REDIS_HOST') && class_exists('Redis'));
@@ -108,8 +122,10 @@ class TasteGraphConnector {
         add_action('wp_login', array($this, 'link_session_on_login'), 10, 2);
         
         // AJAX handlers
-        $ajax_handlers = new TGC_Ajax_Handlers();
-        $ajax_handlers->register_handlers();
+        if (class_exists('TGC_Ajax_Handlers')) {
+            $ajax_handlers = new TGC_Ajax_Handlers();
+            $ajax_handlers->register_handlers();
+        }
         
         // Admin menu
         if (is_admin()) {
@@ -252,14 +268,16 @@ class TasteGraphConnector {
             30
         );
         
-        add_submenu_page(
-            'taste-graph-connector',
-            __('Settings', 'taste-graph-connector'),
-            __('Settings', 'taste-graph-connector'),
-            'manage_options',
-            'taste-graph-connector-settings',
-            array('TGC_Admin_Settings', 'render_page')
-        );
+        if (class_exists('TGC_Admin_Settings')) {
+            add_submenu_page(
+                'taste-graph-connector',
+                __('Settings', 'taste-graph-connector'),
+                __('Settings', 'taste-graph-connector'),
+                'manage_options',
+                'taste-graph-connector-settings',
+                array('TGC_Admin_Settings', 'render_page')
+            );
+        }
     }
     
     /**
@@ -280,22 +298,31 @@ class TasteGraphConnector {
      * Display integration status
      */
     private function display_integration_status() {
-        $api_client = new TGC_API_Client();
-        $health = $api_client->check_health();
-        
         echo '<div class="tgc-status-widget">';
         echo '<h2>' . __('Integration Status', 'taste-graph-connector') . '</h2>';
         
-        if ($health) {
-            echo '<p class="status-ok">✅ ' . __('API Connection: OK', 'taste-graph-connector') . '</p>';
+        // API status
+        if (class_exists('TGC_API_Client')) {
+            $api_client = new TGC_API_Client();
+            $health = $api_client->check_health();
+            
+            if ($health) {
+                echo '<p class="status-ok">✅ ' . __('API Connection: OK', 'taste-graph-connector') . '</p>';
+            } else {
+                echo '<p class="status-error">❌ ' . __('API Connection: Failed', 'taste-graph-connector') . '</p>';
+            }
         } else {
-            echo '<p class="status-error">❌ ' . __('API Connection: Failed', 'taste-graph-connector') . '</p>';
+            echo '<p class="status-error">⚠️ ' . __('API Client not available', 'taste-graph-connector') . '</p>';
         }
         
         // Queue status
-        $queue_manager = new TGC_Queue_Manager();
-        $queue_count = $queue_manager->get_queue_count();
-        echo '<p>' . sprintf(__('Queue Items: %d', 'taste-graph-connector'), $queue_count) . '</p>';
+        if (class_exists('TGC_Queue_Manager')) {
+            $queue_manager = new TGC_Queue_Manager();
+            $queue_count = $queue_manager->get_queue_count();
+            echo '<p>' . sprintf(__('Queue Items: %d', 'taste-graph-connector'), $queue_count) . '</p>';
+        } else {
+            echo '<p>' . __('Queue Manager not available', 'taste-graph-connector') . '</p>';
+        }
         
         echo '</div>';
     }
