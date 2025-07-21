@@ -109,10 +109,6 @@ class TasteGraphConnector {
      * Initialize WordPress hooks
      */
     private function init_hooks() {
-        // Activation/Deactivation hooks
-        register_activation_hook(__FILE__, array($this, 'activate'));
-        register_deactivation_hook(__FILE__, array($this, 'deactivate'));
-        
         // Init hook
         add_action('init', array($this, 'init'));
         
@@ -379,5 +375,19 @@ class TasteGraphConnector {
     }
 }
 
+// Register activation/deactivation hooks outside the class
+register_activation_hook(__FILE__, 'tgc_activate_plugin');
+register_deactivation_hook(__FILE__, 'tgc_deactivate_plugin');
+
 // Initialize the plugin
 add_action('plugins_loaded', array('TasteGraphConnector', 'get_instance'));
+
+// Static activation method
+function tgc_activate_plugin() {
+    TasteGraphConnector::get_instance()->activate();
+}
+
+// Static deactivation method  
+function tgc_deactivate_plugin() {
+    TasteGraphConnector::get_instance()->deactivate();
+}
