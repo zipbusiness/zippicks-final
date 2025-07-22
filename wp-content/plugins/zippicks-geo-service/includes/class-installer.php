@@ -146,8 +146,6 @@ class Installer {
      * Update restaurants table with geo columns
      */
     private static function update_restaurants_table() {
-        global $wpdb;
-        
         // Check if restaurants table exists (PostgreSQL)
         // This would be handled by the main application
         // For now, we'll just log the intent
@@ -192,6 +190,10 @@ class Installer {
         // MaxMind settings
         add_option('zippicks_geo_maxmind_key', '');
         add_option('zippicks_geo_maxmind_last_update', 0);
+        
+        // Trusted proxy settings
+        // Default to empty array - admins must explicitly configure trusted proxies
+        add_option('zippicks_geo_trusted_proxies', []);
         
         // Statistics
         add_option('zippicks_geo_stats', [

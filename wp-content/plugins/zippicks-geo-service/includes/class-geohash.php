@@ -68,6 +68,10 @@ class Geohash {
      * 
      * @param string $geohash
      * @return array ['lat' => [min, max], 'lng' => [min, max]]
+     * 
+     * Note: If error bounds are needed in the future, they can be calculated as:
+     * lat_err = (lat_range[1] - lat_range[0]) / 2
+     * lng_err = (lng_range[1] - lng_range[0]) / 2
      */
     public function decode($geohash) {
         $lat_range = [-90.0, 90.0];
@@ -79,14 +83,12 @@ class Geohash {
             
             for ($mask = 16; $mask > 0; $mask >>= 1) {
                 if ($is_lng) {
-                    $lng_err = ($lng_range[1] - $lng_range[0]) / 2;
                     if ($cd & $mask) {
                         $lng_range[0] = ($lng_range[0] + $lng_range[1]) / 2;
                     } else {
                         $lng_range[1] = ($lng_range[0] + $lng_range[1]) / 2;
                     }
                 } else {
-                    $lat_err = ($lat_range[1] - $lat_range[0]) / 2;
                     if ($cd & $mask) {
                         $lat_range[0] = ($lat_range[0] + $lat_range[1]) / 2;
                     } else {

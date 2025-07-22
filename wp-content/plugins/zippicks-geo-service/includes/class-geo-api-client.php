@@ -60,24 +60,33 @@ class Geo_API_Client {
      * @return string
      */
     private function get_api_url() {
-        // Check for shared ZipPicks API URL first
+        $default_url = 'https://zipbusiness-api.onrender.com/';
+        $candidates = [];
+        
+        // Collect all potential URLs in priority order
         if (defined('ZIPPICKS_API_URL')) {
-            return trailingslashit(ZIPPICKS_API_URL);
+            $candidates[] = ZIPPICKS_API_URL;
         }
         
-        // Fall back to Taste Graph Connector URL if available
         if (defined('TGC_API_URL')) {
-            return trailingslashit(TGC_API_URL);
+            $candidates[] = TGC_API_URL;
         }
         
-        // Check database option
-        $url = get_option('zippicks_api_url', '');
-        if (!empty($url)) {
-            return trailingslashit($url);
+        $db_url = get_option('zippicks_api_url', '');
+        if (!empty($db_url)) {
+            $candidates[] = $db_url;
         }
         
-        // Default to production URL
-        return 'https://zipbusiness-api.onrender.com/';
+        // Validate each candidate URL
+        foreach ($candidates as $url) {
+            $validated_url = $this->validate_api_url($url);
+            if ($validated_url !== false) {
+                return trailingslashit($validated_url);
+            }
+        }
+        
+        // Return default production URL (already validated as HTTPS)
+        return $default_url;
     }
     
     /**
@@ -130,9 +139,24 @@ class Geo_API_Client {
      * @return array|false Response data or false on failure
      */
     public function update_location($latitude, $longitude, $additional_data = []) {
+        // Validate coordinates
+        if (!$this->validate_latitude($latitude)) {
+            if ($this->logger) {
+                $this->logger->error('Invalid latitude provided to update_location', ['latitude' => $latitude]);
+            }
+            return false;
+        }
+        
+        if (!$this->validate_longitude($longitude)) {
+            if ($this->logger) {
+                $this->logger->error('Invalid longitude provided to update_location', ['longitude' => $longitude]);
+            }
+            return false;
+        }
+        
         $data = array_merge([
-            'latitude' => $latitude,
-            'longitude' => $longitude,
+            'latitude' => floatval($latitude),
+            'longitude' => floatval($longitude),
         ], $additional_data);
         
         return $this->make_request(self::ENDPOINT_UPDATE, 'POST', $data);
@@ -148,11 +172,34 @@ class Geo_API_Client {
      * @return array|false Response data or false on failure
      */
     public function find_nearby($latitude, $longitude, $radius_miles = 5, $limit = 20) {
+        // Validate coordinates
+        if (!$this->validate_latitude($latitude)) {
+            if ($this->logger) {
+                $this->logger->error('Invalid latitude provided to find_nearby', ['latitude' => $latitude]);
+            }
+            return false;
+        }
+        
+        if (!$this->validate_longitude($longitude)) {
+            if ($this->logger) {
+                $this->logger->error('Invalid longitude provided to find_nearby', ['longitude' => $longitude]);
+            }
+            return false;
+        }
+        
+        // Validate radius
+        if (!is_numeric($radius_miles) || $radius_miles <= 0) {
+            if ($this->logger) {
+                $this->logger->error('Invalid radius provided to find_nearby', ['radius_miles' => $radius_miles]);
+            }
+            return false;
+        }
+        
         $data = [
-            'latitude' => $latitude,
-            'longitude' => $longitude,
-            'radius_miles' => $radius_miles,
-            'limit' => min($limit, 100), // API max is 100
+            'latitude' => floatval($latitude),
+            'longitude' => floatval($longitude),
+            'radius_miles' => floatval($radius_miles),
+            'limit' => min(intval($limit), 100), // API max is 100
         ];
         
         return $this->make_request(self::ENDPOINT_NEARBY, 'POST', $data);
@@ -167,9 +214,64 @@ class Geo_API_Client {
      * @return array|false Response data or false on failure
      */
     public function calculate_distance($from, $to, $unit = 'miles') {
+        // Validate 'from' coordinates
+        if (!is_array($from) || !isset($from['lat']) || !isset($from['lng'])) {
+            if ($this->logger) {
+                $this->logger->error('Invalid "from" coordinates structure', ['from' => $from]);
+            }
+            return false;
+        }
+        
+        if (!$this->validate_latitude($from['lat'])) {
+            if ($this->logger) {
+                $this->logger->error('Invalid "from" latitude in calculate_distance', ['lat' => $from['lat']]);
+            }
+            return false;
+        }
+        
+        if (!$this->validate_longitude($from['lng'])) {
+            if ($this->logger) {
+                $this->logger->error('Invalid "from" longitude in calculate_distance', ['lng' => $from['lng']]);
+            }
+            return false;
+        }
+        
+        // Validate 'to' coordinates
+        if (!is_array($to) || !isset($to['lat']) || !isset($to['lng'])) {
+            if ($this->logger) {
+                $this->logger->error('Invalid "to" coordinates structure', ['to' => $to]);
+            }
+            return false;
+        }
+        
+        if (!$this->validate_latitude($to['lat'])) {
+            if ($this->logger) {
+                $this->logger->error('Invalid "to" latitude in calculate_distance', ['lat' => $to['lat']]);
+            }
+            return false;
+        }
+        
+        if (!$this->validate_longitude($to['lng'])) {
+            if ($this->logger) {
+                $this->logger->error('Invalid "to" longitude in calculate_distance', ['lng' => $to['lng']]);
+            }
+            return false;
+        }
+        
+        // Validate unit
+        if (!in_array($unit, ['miles', 'km'], true)) {
+            $unit = 'miles'; // Default to miles if invalid
+        }
+        
         $data = [
-            'from' => $from,
-            'to' => $to,
+            'from' => [
+                'lat' => floatval($from['lat']),
+                'lng' => floatval($from['lng'])
+            ],
+            'to' => [
+                'lat' => floatval($to['lat']),
+                'lng' => floatval($to['lng'])
+            ],
             'unit' => $unit,
         ];
         
@@ -291,5 +393,116 @@ class Geo_API_Client {
     public function get_last_error() {
         // TODO: Implement error tracking
         return null;
+    }
+    
+    /**
+     * Validate API URL
+     * 
+     * @param string $url URL to validate
+     * @return string|false Validated URL or false if invalid
+     */
+    private function validate_api_url($url) {
+        // Ensure URL is a string
+        if (!is_string($url)) {
+            return false;
+        }
+        
+        // Trim whitespace
+        $url = trim($url);
+        
+        // Check if URL is empty
+        if (empty($url)) {
+            return false;
+        }
+        
+        // Parse URL components
+        $parsed = wp_parse_url($url);
+        
+        // Validate URL has required components
+        if (!$parsed || !isset($parsed['scheme']) || !isset($parsed['host'])) {
+            if ($this->logger) {
+                $this->logger->warning('Invalid API URL format', ['url' => $url]);
+            }
+            return false;
+        }
+        
+        // Ensure HTTPS scheme
+        if ($parsed['scheme'] !== 'https') {
+            if ($this->logger) {
+                $this->logger->warning('API URL must use HTTPS', [
+                    'url' => $url,
+                    'scheme' => $parsed['scheme']
+                ]);
+            }
+            return false;
+        }
+        
+        // Validate host format
+        if (!filter_var($parsed['host'], FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
+            if ($this->logger) {
+                $this->logger->warning('Invalid API URL hostname', [
+                    'url' => $url,
+                    'host' => $parsed['host']
+                ]);
+            }
+            return false;
+        }
+        
+        // Rebuild URL to ensure proper format
+        $validated_url = 'https://' . $parsed['host'];
+        
+        if (isset($parsed['port'])) {
+            $validated_url .= ':' . $parsed['port'];
+        }
+        
+        if (isset($parsed['path'])) {
+            $validated_url .= $parsed['path'];
+        }
+        
+        // Validate final URL using WordPress function
+        if (!wp_http_validate_url($validated_url)) {
+            if ($this->logger) {
+                $this->logger->warning('API URL failed WordPress validation', ['url' => $validated_url]);
+            }
+            return false;
+        }
+        
+        return $validated_url;
+    }
+    
+    /**
+     * Validate latitude value
+     * 
+     * @param mixed $latitude
+     * @return bool
+     */
+    private function validate_latitude($latitude) {
+        // Check if value is numeric
+        if (!is_numeric($latitude)) {
+            return false;
+        }
+        
+        $lat = floatval($latitude);
+        
+        // Latitude must be between -90 and 90
+        return $lat >= -90 && $lat <= 90;
+    }
+    
+    /**
+     * Validate longitude value
+     * 
+     * @param mixed $longitude
+     * @return bool
+     */
+    private function validate_longitude($longitude) {
+        // Check if value is numeric
+        if (!is_numeric($longitude)) {
+            return false;
+        }
+        
+        $lng = floatval($longitude);
+        
+        // Longitude must be between -180 and 180
+        return $lng >= -180 && $lng <= 180;
     }
 }

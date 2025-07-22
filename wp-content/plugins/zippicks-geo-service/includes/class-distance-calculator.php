@@ -52,9 +52,35 @@ class Distance_Calculator {
      * @param float $lat2 Second point latitude
      * @param float $lng2 Second point longitude
      * @param string $unit Distance unit ('miles' or 'km')
-     * @return float Distance
+     * @return float|null Distance in specified unit, or null if invalid coordinates
      */
     public function calculate_distance($lat1, $lng1, $lat2, $lng2, $unit = 'miles') {
+        // Validate coordinates
+        if (!$this->validate_latitude($lat1) || !$this->validate_latitude($lat2)) {
+            if ($this->logger) {
+                $this->logger->error('Invalid latitude values provided for distance calculation', [
+                    'lat1' => $lat1,
+                    'lat2' => $lat2
+                ]);
+            }
+            return null;
+        }
+        
+        if (!$this->validate_longitude($lng1) || !$this->validate_longitude($lng2)) {
+            if ($this->logger) {
+                $this->logger->error('Invalid longitude values provided for distance calculation', [
+                    'lng1' => $lng1,
+                    'lng2' => $lng2
+                ]);
+            }
+            return null;
+        }
+        
+        // Validate unit parameter
+        if (!in_array($unit, ['miles', 'km'], true)) {
+            $unit = 'miles'; // Default to miles if invalid unit provided
+        }
+        
         // Check cache first
         if ($this->cache) {
             $cache_key = md5("distance:{$lat1}:{$lng1}:{$lat2}:{$lng2}:{$unit}");
@@ -183,9 +209,28 @@ class Distance_Calculator {
     public function find_posts_within_radius($center_lat, $center_lng, $radius_miles, $limit = 20, $post_type = 'zippicks_business') {
         global $wpdb;
         
+        // Validate coordinates
+        if (!$this->validate_latitude($center_lat) || !$this->validate_longitude($center_lng)) {
+            if ($this->logger) {
+                $this->logger->error('Invalid coordinates provided for radius search', [
+                    'lat' => $center_lat,
+                    'lng' => $center_lng
+                ]);
+            }
+            return [];
+        }
+        
+        // Validate radius
+        if (!is_numeric($radius_miles) || $radius_miles <= 0) {
+            if ($this->logger) {
+                $this->logger->error('Invalid radius provided for search', ['radius' => $radius_miles]);
+            }
+            return [];
+        }
+        
         // Calculate bounding box
         $lat_range = $radius_miles / 69.0;
-        $lng_range = $radius_miles / (69.0 * cos(deg2rad($center_lat)));
+        $lng_range = $this->calculate_longitude_range($center_lat, $radius_miles);
         
         // Query posts with location meta
         $query = $wpdb->prepare("
@@ -250,6 +295,13 @@ class Distance_Calculator {
      * @return string Compass direction (N, NE, E, SE, S, SW, W, NW)
      */
     private function calculate_bearing($lat1, $lng1, $lat2, $lng2) {
+        // Validate coordinates
+        if (!$this->validate_latitude($lat1) || !$this->validate_latitude($lat2) ||
+            !$this->validate_longitude($lng1) || !$this->validate_longitude($lng2)) {
+            // Return empty string for invalid coordinates
+            return '';
+        }
+        
         $lat1 = deg2rad($lat1);
         $lat2 = deg2rad($lat2);
         $lng_diff = deg2rad($lng2 - $lng1);
@@ -280,6 +332,12 @@ class Distance_Calculator {
      */
     public function is_within_radius($center_lat, $center_lng, $point_lat, $point_lng, $radius_miles) {
         $distance = $this->calculate_distance($center_lat, $center_lng, $point_lat, $point_lng);
+        
+        // If distance calculation failed due to invalid coordinates, return false
+        if ($distance === null) {
+            return false;
+        }
+        
         return $distance <= $radius_miles;
     }
     
@@ -289,11 +347,30 @@ class Distance_Calculator {
      * @param float $center_lat
      * @param float $center_lng
      * @param float $radius_miles
-     * @return array
+     * @return array|null Array with min/max lat/lng bounds, or null if invalid input
      */
     public function get_bounding_box($center_lat, $center_lng, $radius_miles) {
+        // Validate coordinates
+        if (!$this->validate_latitude($center_lat) || !$this->validate_longitude($center_lng)) {
+            if ($this->logger) {
+                $this->logger->error('Invalid coordinates provided for bounding box calculation', [
+                    'lat' => $center_lat,
+                    'lng' => $center_lng
+                ]);
+            }
+            return null;
+        }
+        
+        // Validate radius
+        if (!is_numeric($radius_miles) || $radius_miles <= 0) {
+            if ($this->logger) {
+                $this->logger->error('Invalid radius provided for bounding box', ['radius' => $radius_miles]);
+            }
+            return null;
+        }
+        
         $lat_range = $radius_miles / 69.0;
-        $lng_range = $radius_miles / (69.0 * cos(deg2rad($center_lat)));
+        $lng_range = $this->calculate_longitude_range($center_lat, $radius_miles);
         
         return [
             'min_lat' => $center_lat - $lat_range,
@@ -339,5 +416,74 @@ class Distance_Calculator {
         }
         
         return $value;
+    }
+    
+    /**
+     * Validate latitude value
+     * 
+     * @param mixed $latitude
+     * @return bool
+     */
+    private function validate_latitude($latitude) {
+        // Check if value is numeric
+        if (!is_numeric($latitude)) {
+            return false;
+        }
+        
+        $lat = floatval($latitude);
+        
+        // Latitude must be between -90 and 90
+        return $lat >= -90 && $lat <= 90;
+    }
+    
+    /**
+     * Validate longitude value
+     * 
+     * @param mixed $longitude
+     * @return bool
+     */
+    private function validate_longitude($longitude) {
+        // Check if value is numeric
+        if (!is_numeric($longitude)) {
+            return false;
+        }
+        
+        $lng = floatval($longitude);
+        
+        // Longitude must be between -180 and 180
+        return $lng >= -180 && $lng <= 180;
+    }
+    
+    /**
+     * Calculate longitude range safely, handling edge cases near poles
+     * 
+     * @param float $center_lat Center latitude
+     * @param float $radius_miles Radius in miles
+     * @return float Longitude range in degrees
+     */
+    private function calculate_longitude_range($center_lat, $radius_miles) {
+        // Get the cosine of the latitude
+        $cos_lat = cos(deg2rad($center_lat));
+        
+        // Define minimum threshold to prevent division issues
+        // At 85 degrees latitude, cos(85°) ≈ 0.0872
+        // This prevents excessive longitude range inflation near poles
+        $min_cos_threshold = 0.0872;
+        
+        // Clamp the cosine value to the minimum threshold
+        if (abs($cos_lat) < $min_cos_threshold) {
+            $cos_lat = $cos_lat >= 0 ? $min_cos_threshold : -$min_cos_threshold;
+            
+            if ($this->logger) {
+                $this->logger->warning('Longitude range calculation clamped near pole', [
+                    'latitude' => $center_lat,
+                    'original_cos' => cos(deg2rad($center_lat)),
+                    'clamped_cos' => $cos_lat
+                ]);
+            }
+        }
+        
+        // Calculate longitude range with clamped cosine value
+        return $radius_miles / (69.0 * $cos_lat);
     }
 }

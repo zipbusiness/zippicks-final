@@ -471,6 +471,9 @@ class Admin {
     public function register_settings() {
         register_setting('zippicks_geo_settings', 'zippicks_geo_settings');
         register_setting('zippicks_geo_settings', 'zippicks_geo_maxmind_key');
+        register_setting('zippicks_geo_settings', 'zippicks_geo_trusted_proxies', [
+            'sanitize_callback' => [$this, 'sanitize_trusted_proxies']
+        ]);
         
         add_settings_section(
             'zippicks_geo_general',
@@ -495,6 +498,21 @@ class Admin {
             'zippicks_geo_settings',
             'zippicks_geo_general',
             ['field' => 'enable_ip_detection']
+        );
+        
+        add_settings_section(
+            'zippicks_geo_security',
+            __('Security Settings', 'zippicks-geo'),
+            [$this, 'render_security_section'],
+            'zippicks_geo_settings'
+        );
+        
+        add_settings_field(
+            'trusted_proxies',
+            __('Trusted Proxy IPs/Ranges', 'zippicks-geo'),
+            [$this, 'render_trusted_proxies_field'],
+            'zippicks_geo_settings',
+            'zippicks_geo_security'
         );
         
         add_settings_section(
@@ -539,6 +557,75 @@ class Admin {
             ); ?>
         </p>
         <?php
+    }
+    
+    /**
+     * Render security section description
+     */
+    public function render_security_section() {
+        echo '<p>' . __('Configure security settings for IP geolocation. Only trust proxy headers from known proxy servers to prevent IP spoofing.', 'zippicks-geo') . '</p>';
+    }
+    
+    /**
+     * Render trusted proxies field
+     */
+    public function render_trusted_proxies_field() {
+        $trusted_proxies = get_option('zippicks_geo_trusted_proxies', []);
+        $ip_geo = new \ZipPicks\Geo\IP_Geolocation();
+        $default_proxies = $ip_geo->get_default_trusted_proxies();
+        ?>
+        <textarea name="zippicks_geo_trusted_proxies" rows="10" cols="50" class="large-text code"><?php 
+            echo esc_textarea(implode("\n", $trusted_proxies)); 
+        ?></textarea>
+        <p class="description">
+            <?php _e('Enter one IP address or CIDR range per line. Examples:', 'zippicks-geo'); ?><br>
+            <code>192.168.1.1</code> - Single IP<br>
+            <code>10.0.0.0/8</code> - CIDR range<br>
+            <code>2606:4700::/32</code> - IPv6 range
+        </p>
+        <p class="description">
+            <strong><?php _e('Warning:', 'zippicks-geo'); ?></strong> 
+            <?php _e('Only add IPs of proxy servers you control or trust (e.g., Cloudflare, your load balancer).', 'zippicks-geo'); ?>
+        </p>
+        <details style="margin-top: 10px;">
+            <summary style="cursor: pointer;"><?php _e('Use Cloudflare defaults', 'zippicks-geo'); ?></summary>
+            <p class="description" style="margin-top: 10px;">
+                <?php _e('Click the button below to populate with Cloudflare\'s IP ranges:', 'zippicks-geo'); ?>
+            </p>
+            <button type="button" class="button" onclick="document.querySelector('[name=zippicks_geo_trusted_proxies]').value = <?php echo esc_attr(json_encode(implode("\n", $default_proxies))); ?>">
+                <?php _e('Use Cloudflare IPs', 'zippicks-geo'); ?>
+            </button>
+        </details>
+        <?php
+    }
+    
+    /**
+     * Sanitize trusted proxies input
+     */
+    public function sanitize_trusted_proxies($input) {
+        if (!is_string($input)) {
+            return [];
+        }
+        
+        // Split by newlines and clean up
+        $lines = explode("\n", $input);
+        $proxies = [];
+        
+        foreach ($lines as $line) {
+            $line = trim($line);
+            
+            // Skip empty lines and comments
+            if (empty($line) || strpos($line, '#') === 0) {
+                continue;
+            }
+            
+            // Basic validation - more thorough validation happens in is_trusted_proxy()
+            if (preg_match('/^[0-9a-fA-F:.\/]+$/', $line)) {
+                $proxies[] = $line;
+            }
+        }
+        
+        return array_unique($proxies);
     }
     
     /**

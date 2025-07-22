@@ -5,6 +5,20 @@
  */
 class ZipPicksLocationManager {
     constructor() {
+        // Validate zippicks_geo global object exists and has required properties
+        if (typeof zippicks_geo === 'undefined' || !zippicks_geo) {
+            throw new Error('ZipPicks Geo Service: Global configuration object (zippicks_geo) is not defined. Please ensure the plugin is properly initialized.');
+        }
+        
+        // Validate required properties with fallbacks
+        const requiredProps = ['api_endpoint', 'nonce', 'user_id', 'session_id'];
+        const missingProps = requiredProps.filter(prop => !(prop in zippicks_geo));
+        
+        if (missingProps.length > 0) {
+            throw new Error(`ZipPicks Geo Service: Missing required properties in configuration: ${missingProps.join(', ')}`);
+        }
+        
+        // Initialize properties with validated values
         this.endpoint = zippicks_geo.api_endpoint;
         this.nonce = zippicks_geo.nonce;
         this.userId = zippicks_geo.user_id;
@@ -450,19 +464,32 @@ class ZipPicksLocationManager {
 
 // Initialize on DOM ready
 jQuery(document).ready(function($) {
-    // Create global instance
-    window.zippicksLocation = new ZipPicksLocationManager();
-    
-    // Auto-detect location on page load (if enabled)
-    if (zippicks_geo.auto_detect) {
-        window.zippicksLocation.getCurrentLocation().then(location => {
-            console.log('Location detected:', location);
-        });
+    try {
+        // Create global instance
+        window.zippicksLocation = new ZipPicksLocationManager();
+        
+        // Auto-detect location on page load (if enabled)
+        if (typeof zippicks_geo !== 'undefined' && zippicks_geo && zippicks_geo.auto_detect) {
+            window.zippicksLocation.getCurrentLocation().then(location => {
+                console.log('Location detected:', location);
+            });
+        }
+    } catch (error) {
+        console.error('Failed to initialize ZipPicks Location Manager:', error.message);
+        // Set a flag to indicate initialization failed
+        window.zippicksLocationError = error;
     }
     
     // Add location button handler
     $(document).on('click', '.zippicks-detect-location', function(e) {
         e.preventDefault();
+        
+        // Check if location manager was initialized successfully
+        if (!window.zippicksLocation) {
+            console.error('Location manager not initialized');
+            alert('Location services are not available. Please check your browser console for errors.');
+            return;
+        }
         
         const $button = $(this);
         const originalText = $button.text();
@@ -503,6 +530,13 @@ jQuery(document).ready(function($) {
             $locationField.after($useLocationBtn);
             
             $useLocationBtn.on('click', function() {
+                // Check if location manager was initialized successfully
+                if (!window.zippicksLocation) {
+                    console.error('Location manager not initialized');
+                    alert('Location services are not available. Please check your browser console for errors.');
+                    return;
+                }
+                
                 window.zippicksLocation.getCurrentLocation().then(location => {
                     if (location.city && location.state) {
                         $locationField.val(`${location.city}, ${location.state}`);

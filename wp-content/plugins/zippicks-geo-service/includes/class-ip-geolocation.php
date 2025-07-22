@@ -25,10 +25,13 @@ class IP_Geolocation {
     
     /**
      * Fallback IP geolocation API endpoints
+     * 
+     * Note: ip-api.com requires paid plan for HTTPS access
+     * Using ipinfo.io as primary fallback for security
      */
     private $fallback_apis = [
-        'ipapi' => 'http://ip-api.com/json/%s',
         'ipinfo' => 'https://ipinfo.io/%s/json',
+        'ipapi' => 'http://ip-api.com/json/%s', // WARNING: Insecure HTTP - use only as last resort
     ];
     
     /**
@@ -167,7 +170,46 @@ class IP_Geolocation {
      * @return array|null
      */
     private function get_fallback_location($ip_address) {
-        // Try ip-api.com first (free, no key required)
+        // Try ipinfo.io first (HTTPS, more secure)
+        $url = sprintf($this->fallback_apis['ipinfo'], $ip_address);
+        
+        $response = wp_remote_get($url, [
+            'timeout' => 3,
+            'headers' => [
+                'User-Agent' => 'ZipPicks Geo Service/1.0',
+            ],
+        ]);
+        
+        if (!is_wp_error($response)) {
+            $body = wp_remote_retrieve_body($response);
+            $data = json_decode($body, true);
+            
+            if ($data && isset($data['loc'])) {
+                // Parse ipinfo.io response format
+                list($latitude, $longitude) = explode(',', $data['loc']);
+                return [
+                    'latitude' => floatval($latitude),
+                    'longitude' => floatval($longitude),
+                    'city' => $data['city'] ?? null,
+                    'state' => $data['region'] ?? null,
+                    'zip_code' => $data['postal'] ?? null,
+                    'country' => $data['country'] ?? null,
+                    'accuracy' => 'city',
+                    'accuracy_meters' => 10000, // Approximate
+                    'source' => 'ip',
+                ];
+            }
+        }
+        
+        // Only fall back to HTTP ip-api.com if HTTPS fails and log warning
+        if (function_exists('zippicks') && zippicks()->has('logger')) {
+            $logger = zippicks()->get('logger');
+            $logger->warning('Falling back to insecure HTTP API for IP geolocation', [
+                'ip' => $ip_address,
+                'reason' => 'HTTPS ipinfo.io request failed'
+            ]);
+        }
+        
         $url = sprintf($this->fallback_apis['ipapi'], $ip_address);
         
         $response = wp_remote_get($url, [
@@ -207,13 +249,34 @@ class IP_Geolocation {
      * @return string
      */
     private function get_client_ip() {
-        // CloudFlare
-        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-            $ips = explode(',', $_SERVER['HTTP_CF_CONNECTING_IP']);
-            return trim($ips[0]);
+        $remote_addr = $_SERVER['REMOTE_ADDR'] ?? '';
+        
+        // If remote address is not from a trusted proxy, return it directly
+        if (!$this->is_trusted_proxy($remote_addr)) {
+            return $remote_addr;
         }
         
-        // Load balancer/proxy headers
+        // Remote address is from trusted proxy, check forwarded headers
+        // Priority order: CloudFlare, X-Forwarded-For, X-Real-IP, Client-IP
+        
+        // CloudFlare (only if remote is CloudFlare IP)
+        if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+            $ips = explode(',', $_SERVER['HTTP_CF_CONNECTING_IP']);
+            $ip = trim($ips[0]);
+            
+            if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                if (function_exists('zippicks') && zippicks()->has('logger')) {
+                    $logger = zippicks()->get('logger');
+                    $logger->debug('Using CloudFlare connecting IP', [
+                        'ip' => $ip,
+                        'proxy' => $remote_addr
+                    ]);
+                }
+                return $ip;
+            }
+        }
+        
+        // Other proxy headers
         $headers = [
             'HTTP_X_FORWARDED_FOR',
             'HTTP_X_REAL_IP',
@@ -222,18 +285,173 @@ class IP_Geolocation {
         
         foreach ($headers as $header) {
             if (!empty($_SERVER[$header])) {
+                // X-Forwarded-For can contain multiple IPs
                 $ips = explode(',', $_SERVER[$header]);
-                $ip = trim($ips[0]);
                 
-                // Validate IP
-                if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-                    return $ip;
+                // Get the first non-private IP
+                foreach ($ips as $ip) {
+                    $ip = trim($ip);
+                    
+                    // Validate IP and ensure it's not private/reserved
+                    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                        if (function_exists('zippicks') && zippicks()->has('logger')) {
+                            $logger = zippicks()->get('logger');
+                            $logger->debug('Using forwarded IP from trusted proxy', [
+                                'ip' => $ip,
+                                'header' => $header,
+                                'proxy' => $remote_addr
+                            ]);
+                        }
+                        return $ip;
+                    }
                 }
             }
         }
         
-        // Direct connection
-        return $_SERVER['REMOTE_ADDR'] ?? '';
+        // No valid forwarded IP found, return the proxy IP
+        if (function_exists('zippicks') && zippicks()->has('logger')) {
+            $logger = zippicks()->get('logger');
+            $logger->warning('Trusted proxy did not provide valid forwarded IP', [
+                'proxy' => $remote_addr
+            ]);
+        }
+        
+        return $remote_addr;
+    }
+    
+    /**
+     * Check if an IP is from a trusted proxy
+     * 
+     * @param string $ip IP address to check
+     * @return bool
+     */
+    private function is_trusted_proxy($ip) {
+        // Get trusted proxy configuration
+        $trusted_proxies = get_option('zippicks_geo_trusted_proxies', $this->get_default_trusted_proxies());
+        
+        if (empty($trusted_proxies)) {
+            return false;
+        }
+        
+        // Check each trusted proxy/range
+        foreach ($trusted_proxies as $proxy) {
+            if ($this->ip_in_range($ip, $proxy)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Check if IP is within a range (supports CIDR notation)
+     * 
+     * @param string $ip IP address to check
+     * @param string $range IP or CIDR range
+     * @return bool
+     */
+    private function ip_in_range($ip, $range) {
+        // Direct IP match
+        if ($ip === $range) {
+            return true;
+        }
+        
+        // CIDR notation check
+        if (strpos($range, '/') !== false) {
+            list($subnet, $mask) = explode('/', $range);
+            
+            // Check if IPv6
+            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) && 
+                filter_var($subnet, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+                return $this->ipv6_in_range($ip, $subnet, $mask);
+            }
+            
+            // IPv4 handling
+            $ip_long = ip2long($ip);
+            $subnet_long = ip2long($subnet);
+            
+            if ($ip_long === false || $subnet_long === false) {
+                return false;
+            }
+            
+            $mask = (int)$mask;
+            $ip_binary = sprintf('%032b', $ip_long);
+            $subnet_binary = sprintf('%032b', $subnet_long);
+            
+            // Compare network portions
+            return substr($ip_binary, 0, $mask) === substr($subnet_binary, 0, $mask);
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Check if IPv6 is within a range
+     * 
+     * @param string $ip IPv6 address
+     * @param string $subnet IPv6 subnet
+     * @param int $mask Subnet mask
+     * @return bool
+     */
+    private function ipv6_in_range($ip, $subnet, $mask) {
+        $ip_bin = inet_pton($ip);
+        $subnet_bin = inet_pton($subnet);
+        
+        if ($ip_bin === false || $subnet_bin === false) {
+            return false;
+        }
+        
+        $mask = (int)$mask;
+        
+        // Compare bit by bit
+        for ($i = 0; $i < $mask; $i++) {
+            $byte_index = intval($i / 8);
+            $bit_index = $i % 8;
+            
+            $ip_bit = (ord($ip_bin[$byte_index]) >> (7 - $bit_index)) & 1;
+            $subnet_bit = (ord($subnet_bin[$byte_index]) >> (7 - $bit_index)) & 1;
+            
+            if ($ip_bit !== $subnet_bit) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Get default trusted proxy ranges
+     * 
+     * @return array
+     */
+    public function get_default_trusted_proxies() {
+        return [
+            // Cloudflare IPv4 ranges (as of 2024)
+            '173.245.48.0/20',
+            '103.21.244.0/22',
+            '103.22.200.0/22',
+            '103.31.4.0/22',
+            '141.101.64.0/18',
+            '108.162.192.0/18',
+            '190.93.240.0/20',
+            '188.114.96.0/20',
+            '197.234.240.0/22',
+            '198.41.128.0/17',
+            '162.158.0.0/15',
+            '104.16.0.0/13',
+            '104.24.0.0/14',
+            '172.64.0.0/13',
+            '131.0.72.0/22',
+            
+            // Cloudflare IPv6 ranges
+            '2400:cb00::/32',
+            '2606:4700::/32',
+            '2803:f800::/32',
+            '2405:b500::/32',
+            '2405:8100::/32',
+            '2a06:98c0::/29',
+            '2c0f:f248::/32',
+        ];
     }
     
     /**
@@ -273,10 +491,73 @@ class IP_Geolocation {
         ];
         
         $download_url = add_query_arg($params, $url);
+        
+        // First, download the checksum file
+        $checksum_params = $params;
+        $checksum_params['suffix'] = 'tar.gz.sha256';
+        $checksum_url = add_query_arg($checksum_params, $url);
+        
+        $checksum_response = wp_remote_get($checksum_url, [
+            'timeout' => 30,
+            'headers' => [
+                'User-Agent' => 'ZipPicks Geo Service/1.0',
+            ],
+        ]);
+        
+        if (is_wp_error($checksum_response)) {
+            if (function_exists('zippicks') && zippicks()->has('logger')) {
+                $logger = zippicks()->get('logger');
+                $logger->error('Failed to download MaxMind checksum', [
+                    'error' => $checksum_response->get_error_message(),
+                ]);
+            }
+            return false;
+        }
+        
+        $expected_checksum = trim(wp_remote_retrieve_body($checksum_response));
+        if (empty($expected_checksum)) {
+            if (function_exists('zippicks') && zippicks()->has('logger')) {
+                $logger = zippicks()->get('logger');
+                $logger->error('MaxMind checksum file is empty');
+            }
+            return false;
+        }
+        
+        // Extract just the hash from the checksum file (format: "hash  filename")
+        $checksum_parts = explode(' ', $expected_checksum);
+        $expected_hash = $checksum_parts[0];
+        
+        // Download the database file
         $temp_file = download_url($download_url);
         
         if (is_wp_error($temp_file)) {
             return false;
+        }
+        
+        // Verify checksum
+        $actual_hash = hash_file('sha256', $temp_file);
+        
+        if ($actual_hash !== $expected_hash) {
+            if (function_exists('zippicks') && zippicks()->has('logger')) {
+                $logger = zippicks()->get('logger');
+                $logger->error('MaxMind database checksum verification failed', [
+                    'expected' => $expected_hash,
+                    'actual' => $actual_hash,
+                    'code' => ZIPPICKS_GEO_ERRORS['GEO006'],
+                ]);
+            }
+            
+            // Delete potentially compromised file
+            unlink($temp_file);
+            return false;
+        }
+        
+        // Log successful verification
+        if (function_exists('zippicks') && zippicks()->has('logger')) {
+            $logger = zippicks()->get('logger');
+            $logger->info('MaxMind database checksum verified successfully', [
+                'checksum' => $expected_hash,
+            ]);
         }
         
         // Extract and move database file
@@ -300,12 +581,23 @@ class IP_Geolocation {
                 $target = $db_dir . 'GeoLite2-City.mmdb';
                 rename($files[0], $target);
                 
-                // Clean up
-                $this->cleanup_directory($temp_dir);
+                // Clean up with explicit base directory for safety
+                $this->cleanup_directory($temp_dir, sys_get_temp_dir());
                 unlink($temp_file);
+                
+                // Update last update timestamp
+                update_option('zippicks_geo_maxmind_last_update', current_time('timestamp'));
                 
                 // Reinitialize reader
                 $this->init_maxmind();
+                
+                if (function_exists('zippicks') && zippicks()->has('logger')) {
+                    $logger = zippicks()->get('logger');
+                    $logger->info('MaxMind database updated successfully', [
+                        'file' => $target,
+                        'checksum' => $expected_hash,
+                    ]);
+                }
                 
                 return true;
             }
@@ -322,22 +614,76 @@ class IP_Geolocation {
     }
     
     /**
-     * Recursively remove directory
+     * Recursively remove directory with path validation
      * 
-     * @param string $dir
+     * @param string $dir Directory to remove
+     * @param string $allowed_base Base directory that $dir must be within (optional)
+     * @return bool True if cleaned up, false if validation failed
      */
-    private function cleanup_directory($dir) {
-        if (!is_dir($dir)) {
-            return;
+    private function cleanup_directory($dir, $allowed_base = null) {
+        // If no base provided, use system temp directory
+        if ($allowed_base === null) {
+            $allowed_base = sys_get_temp_dir();
         }
         
+        // Normalize paths for comparison
+        $real_dir = realpath($dir);
+        $real_base = realpath($allowed_base);
+        
+        // Validate paths exist
+        if ($real_dir === false || $real_base === false) {
+            if (function_exists('zippicks') && zippicks()->has('logger')) {
+                $logger = zippicks()->get('logger');
+                $logger->warning('Invalid path provided to cleanup_directory', [
+                    'dir' => $dir,
+                    'allowed_base' => $allowed_base,
+                ]);
+            }
+            return false;
+        }
+        
+        // Ensure directory is within allowed base
+        if (strpos($real_dir, $real_base) !== 0) {
+            if (function_exists('zippicks') && zippicks()->has('logger')) {
+                $logger = zippicks()->get('logger');
+                $logger->error('Attempted to clean directory outside allowed path', [
+                    'dir' => $real_dir,
+                    'allowed_base' => $real_base,
+                    'code' => ZIPPICKS_GEO_ERRORS['GEO007'],
+                ]);
+            }
+            return false;
+        }
+        
+        // Additional safety check - ensure it's a MaxMind temp directory
+        if (strpos($real_dir, '/maxmind_') === false && strpos($real_dir, '\\maxmind_') === false) {
+            if (function_exists('zippicks') && zippicks()->has('logger')) {
+                $logger = zippicks()->get('logger');
+                $logger->error('Attempted to clean non-MaxMind directory', [
+                    'dir' => $real_dir,
+                ]);
+            }
+            return false;
+        }
+        
+        if (!is_dir($dir)) {
+            return true;
+        }
+        
+        // Proceed with recursive deletion
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {
             $path = $dir . '/' . $file;
-            is_dir($path) ? $this->cleanup_directory($path) : unlink($path);
+            if (is_dir($path)) {
+                // Recursive call maintains the same allowed_base
+                $this->cleanup_directory($path, $allowed_base);
+            } else {
+                unlink($path);
+            }
         }
         
         rmdir($dir);
+        return true;
     }
     
     /**

@@ -59,8 +59,22 @@ class Geo_Cache {
                 // Get Redis configuration from environment or defaults
                 $host = defined('REDIS_HOST') ? REDIS_HOST : '127.0.0.1';
                 $port = defined('REDIS_PORT') ? REDIS_PORT : 6379;
+                $timeout = defined('REDIS_TIMEOUT') ? REDIS_TIMEOUT : 2.0;
                 
-                if ($this->redis->connect($host, $port, 2.0)) {
+                if ($this->redis->connect($host, $port, $timeout)) {
+                    // Check if authentication is required
+                    $password = $this->get_redis_password();
+                    if ($password !== null) {
+                        if (!$this->redis->auth($password)) {
+                            throw new \Exception('Redis authentication failed');
+                        }
+                    }
+                    
+                    // Select database if specified
+                    if (defined('REDIS_DATABASE') && is_numeric(REDIS_DATABASE)) {
+                        $this->redis->select(REDIS_DATABASE);
+                    }
+                    
                     // Set Redis options
                     $this->redis->setOption(\Redis::OPT_PREFIX, self::KEY_PREFIX);
                     $this->redis->setOption(\Redis::OPT_SERIALIZER, \Redis::SERIALIZER_JSON);
@@ -78,6 +92,9 @@ class Geo_Cache {
                     $logger->error('Redis connection failed', [
                         'error' => $e->getMessage(),
                         'code' => ZIPPICKS_GEO_ERRORS['GEO005'],
+                        'host' => $host ?? '127.0.0.1',
+                        'port' => $port ?? 6379,
+                        'auth_required' => $this->get_redis_password() !== null
                     ]);
                 }
             }
@@ -173,7 +190,9 @@ class Geo_Cache {
      * @return array|null
      */
     public function get_nearby_results($lat, $lng, $radius, $filters = []) {
-        $cache_key = md5(sprintf('%f:%f:%f:%s', $lat, $lng, $radius, serialize($filters)));
+        // Sort filters to ensure consistent cache keys regardless of array order
+        ksort($filters);
+        $cache_key = md5(sprintf('%f:%f:%f:%s', $lat, $lng, $radius, json_encode($filters)));
         $key = $this->make_key('nearby', $cache_key);
         
         return $this->get($key);
@@ -190,7 +209,9 @@ class Geo_Cache {
      * @return bool
      */
     public function set_nearby_results($lat, $lng, $radius, $results, $filters = []) {
-        $cache_key = md5(sprintf('%f:%f:%f:%s', $lat, $lng, $radius, serialize($filters)));
+        // Sort filters to ensure consistent cache keys regardless of array order
+        ksort($filters);
+        $cache_key = md5(sprintf('%f:%f:%f:%s', $lat, $lng, $radius, json_encode($filters)));
         $key = $this->make_key('nearby', $cache_key);
         
         return $this->set($key, $results, $this->ttl['nearby_results']);
@@ -337,21 +358,83 @@ class Geo_Cache {
      * 
      * @param array $locations Array of [lat, lng] pairs
      * @param float $radius Default radius
+     * @param Distance_Calculator $calculator Optional calculator instance
      */
-    public function warm_cache($locations, $radius = 5) {
+    public function warm_cache($locations, $radius = 5, Distance_Calculator $calculator = null) {
         if (!$this->redis || empty($locations)) {
             return;
         }
         
-        // This would be called by a cron job to pre-populate cache
-        // for popular search areas
-        foreach ($locations as $location) {
-            if (isset($location['lat']) && isset($location['lng'])) {
-                // Trigger a nearby search to populate cache
-                $calc = new Distance_Calculator();
-                $calc->set_cache($this);
-                $calc->find_within_radius($location['lat'], $location['lng'], $radius);
+        // If no calculator provided, work directly with cache
+        if ($calculator === null) {
+            // Pre-populate cache entries directly without circular dependency
+            foreach ($locations as $location) {
+                if (isset($location['lat']) && isset($location['lng'])) {
+                    // Create cache key for this location/radius combination
+                    $lat = floatval($location['lat']);
+                    $lng = floatval($location['lng']);
+                    
+                    // Pre-warm with empty result set to indicate "checked but no results"
+                    // This prevents unnecessary API calls for areas with no data
+                    $this->set_nearby_results($lat, $lng, $radius, [
+                        'results' => [],
+                        'total' => 0,
+                        'cached_at' => time(),
+                        'pre_warmed' => true
+                    ]);
+                    
+                    if (function_exists('zippicks') && zippicks()->has('logger')) {
+                        $logger = zippicks()->get('logger');
+                        $logger->info('Cache warmed for location', [
+                            'lat' => $lat,
+                            'lng' => $lng,
+                            'radius' => $radius
+                        ]);
+                    }
+                }
+            }
+        } else {
+            // Use provided calculator instance (already has cache set externally)
+            foreach ($locations as $location) {
+                if (isset($location['lat']) && isset($location['lng'])) {
+                    $calculator->find_within_radius($location['lat'], $location['lng'], $radius);
+                }
             }
         }
+    }
+    
+    /**
+     * Get Redis password from various sources
+     * 
+     * @return string|null Redis password or null if not set
+     */
+    private function get_redis_password() {
+        // Check multiple sources for Redis password
+        // Priority order: constant, environment variable, database option
+        
+        // 1. Check WordPress constant (wp-config.php)
+        if (defined('REDIS_PASSWORD') && !empty(REDIS_PASSWORD)) {
+            return REDIS_PASSWORD;
+        }
+        
+        // 2. Check environment variable
+        $env_password = getenv('REDIS_PASSWORD');
+        if ($env_password !== false && !empty($env_password)) {
+            return $env_password;
+        }
+        
+        // 3. Check database option (less secure, but allows admin configuration)
+        $db_password = get_option('zippicks_redis_password', '');
+        if (!empty($db_password)) {
+            return $db_password;
+        }
+        
+        // 4. Check if Redis requires authentication by looking for auth constant
+        if (defined('REDIS_AUTH') && !empty(REDIS_AUTH)) {
+            return REDIS_AUTH;
+        }
+        
+        // No password configured
+        return null;
     }
 }

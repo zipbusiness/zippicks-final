@@ -34,6 +34,8 @@ define('ZIPPICKS_GEO_ERRORS', [
     'GEO003' => 'Permission denied',
     'GEO004' => 'Rate limit exceeded',
     'GEO005' => 'Cache connection failed',
+    'GEO006' => 'Checksum verification failed',
+    'GEO007' => 'Directory path validation failed',
 ]);
 
 /**
@@ -225,18 +227,15 @@ class ZipPicks_Geo_Service {
     }
     
     /**
-     * Get or create session ID
+     * Get or create session ID using WordPress-friendly methods
      */
     private function get_session_id() {
-        if (!session_id()) {
-            session_start();
+        // Delegate to location detector for consistent session handling
+        if (!$this->location_detector) {
+            $this->location_detector = new Location_Detector();
         }
         
-        if (!isset($_SESSION['zippicks_geo_session'])) {
-            $_SESSION['zippicks_geo_session'] = wp_generate_password(32, false);
-        }
-        
-        return $_SESSION['zippicks_geo_session'];
+        return $this->location_detector->get_session_id();
     }
     
     /**
