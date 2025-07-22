@@ -53,6 +53,9 @@ class Location_Detector {
      */
     public function __construct() {
         $this->ip_service = new IP_Geolocation();
+        
+        // Set up early cookie handling to avoid headers already sent issues
+        add_action('init', [$this, 'ensure_session_cookie'], 1);
     }
     
     /**
@@ -382,41 +385,81 @@ class Location_Detector {
     }
     
     /**
-     * Get session ID
+     * Get session ID using WordPress-friendly methods
      * 
      * @return string
      */
-    private function get_session_id() {
-        if (!session_id()) {
-            session_start();
-        }
+    public function get_session_id() {
+        $cookie_name = 'zippicks_geo_session';
+        $cookie_expiry = time() + (30 * DAY_IN_SECONDS); // 30 days
+        $session_id = null;
         
-        if (!isset($_SESSION['zippicks_geo_session'])) {
-            $_SESSION['zippicks_geo_session'] = wp_generate_password(32, false);
-        }
-        
-        return $_SESSION['zippicks_geo_session'];
-    }
-    
-    /**
-     * Get client IP address
-     * 
-     * @return string
-     */
-    private function get_client_ip() {
-        $ip_keys = ['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'];
-        
-        foreach ($ip_keys as $key) {
-            if (!empty($_SERVER[$key])) {
-                $ips = explode(',', $_SERVER[$key]);
-                $ip = trim($ips[0]);
-                
-                if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE)) {
-                    return $ip;
-                }
+        // Try to get session ID from cookie first
+        if (isset($_COOKIE[$cookie_name])) {
+            $session_id = sanitize_text_field($_COOKIE[$cookie_name]);
+            
+            // Validate session ID format (32 chars, alphanumeric)
+            if (!preg_match('/^[a-zA-Z0-9]{32}$/', $session_id)) {
+                $session_id = null;
             }
         }
         
-        return $_SERVER['REMOTE_ADDR'] ?? '';
+        // If no valid session ID, check transient (for non-cookie scenarios)
+        if (!$session_id && is_user_logged_in()) {
+            $user_id = get_current_user_id();
+            $transient_key = 'zippicks_geo_session_' . $user_id;
+            $session_id = get_transient($transient_key);
+        }
+        
+        // Generate new session ID if needed
+        if (!$session_id) {
+            $session_id = wp_generate_password(32, false, false);
+            
+            // Set cookie if headers not sent
+            if (!headers_sent()) {
+                setcookie(
+                    $cookie_name,
+                    $session_id,
+                    $cookie_expiry,
+                    COOKIEPATH,
+                    COOKIE_DOMAIN,
+                    is_ssl(),
+                    true // httponly
+                );
+            }
+            
+            // Also store in transient for logged-in users
+            if (is_user_logged_in()) {
+                $user_id = get_current_user_id();
+                $transient_key = 'zippicks_geo_session_' . $user_id;
+                set_transient($transient_key, $session_id, 30 * DAY_IN_SECONDS);
+            }
+            
+            // Log new session creation
+            if (function_exists('zippicks') && zippicks()->has('logger')) {
+                $logger = zippicks()->get('logger');
+                $logger->debug('New geo session created', [
+                    'session_id' => $session_id,
+                    'user_id' => is_user_logged_in() ? get_current_user_id() : 0,
+                    'headers_sent' => headers_sent()
+                ]);
+            }
+        }
+        
+        return $session_id;
     }
+    
+    /**
+     * Ensure session cookie is set early in WordPress lifecycle
+     * 
+     * @return void
+     */
+    public function ensure_session_cookie() {
+        // Only run if headers not sent and no existing session
+        if (!headers_sent() && !isset($_COOKIE['zippicks_geo_session'])) {
+            // This will trigger cookie creation if needed
+            $this->get_session_id();
+        }
+    }
+    
 }

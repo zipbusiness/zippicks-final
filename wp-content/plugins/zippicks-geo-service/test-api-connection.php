@@ -6,12 +6,43 @@
  * and the ZipBusiness Geo API endpoints.
  */
 
-// Load WordPress
-require_once dirname(__FILE__) . '/../../../../wp-load.php';
+// Find and load WordPress
+$wp_load = null;
+$dir = dirname(__FILE__);
+for ($i = 0; $i < 6; $i++) {
+    if (file_exists($dir . '/wp-load.php')) {
+        $wp_load = $dir . '/wp-load.php';
+        break;
+    }
+    $dir = dirname($dir);
+}
 
-// Security check
+if (!$wp_load) {
+    die('Error: Could not locate wp-load.php. Please ensure this plugin is installed in the correct WordPress directory.');
+}
+
+require_once $wp_load;
+
+// Security check with improved error handling
+if (!is_user_logged_in()) {
+    wp_die(
+        '<h1>Authentication Required</h1>' .
+        '<p>You must be logged in to access this page.</p>' .
+        '<p><a href="' . wp_login_url($_SERVER['REQUEST_URI']) . '">Click here to log in</a></p>',
+        'Authentication Required',
+        ['response' => 401]
+    );
+}
+
 if (!current_user_can('manage_options')) {
-    die('Admin access required');
+    wp_die(
+        '<h1>Insufficient Permissions</h1>' .
+        '<p>You must have administrator privileges to access this page.</p>' .
+        '<p>Your current role: ' . implode(', ', wp_get_current_user()->roles) . '</p>' .
+        '<p><a href="' . admin_url() . '">Return to Dashboard</a></p>',
+        'Access Denied',
+        ['response' => 403]
+    );
 }
 
 // Load plugin classes

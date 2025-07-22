@@ -251,7 +251,7 @@ class REST_Controller {
      */
     public function detect_location($request) {
         // Check rate limiting
-        if (!$this->check_rate_limit($request)) {
+        if (!$this->check_rate_limit()) {
             return new \WP_Error(
                 'rate_limit_exceeded',
                 ZIPPICKS_GEO_ERRORS['GEO004'],
@@ -351,7 +351,7 @@ class REST_Controller {
      */
     public function find_nearby($request) {
         // Check rate limiting
-        if (!$this->check_rate_limit($request)) {
+        if (!$this->check_rate_limit()) {
             return new \WP_Error(
                 'rate_limit_exceeded',
                 ZIPPICKS_GEO_ERRORS['GEO004'],
@@ -451,10 +451,9 @@ class REST_Controller {
     /**
      * Check rate limiting
      * 
-     * @param \WP_REST_Request $request
      * @return bool
      */
-    private function check_rate_limit($request) {
+    private function check_rate_limit() {
         // Get user type
         $user_type = 'public';
         if (is_user_logged_in()) {
