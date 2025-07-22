@@ -93,7 +93,7 @@ jobs:
             --enableExperimental
 
       - name: Upload dependency check results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: dependency-check-report
           path: reports/
@@ -211,7 +211,7 @@ jobs:
           vendor/bin/phpunit --coverage-html coverage-report --coverage-clover coverage.xml
 
       - name: Upload coverage reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: wp-content/mu-plugins/zippicks-foundation/coverage-report/
