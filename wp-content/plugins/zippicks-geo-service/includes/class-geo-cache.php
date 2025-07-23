@@ -264,12 +264,38 @@ class Geo_Cache {
         
         if ($this->redis) {
             try {
-                // Get all keys with our prefix
+                // Use SCAN to non-blockingly iterate through keys
+                $iterator = null;
                 $pattern = '*';
-                $keys = $this->redis->keys($pattern);
+                $batch_size = 100;
+                $keys_to_delete = [];
                 
-                if (!empty($keys)) {
-                    $results['deleted_count'] = $this->redis->del($keys);
+                do {
+                    // SCAN returns [cursor, keys]
+                    $scan_result = $this->redis->scan($iterator, [
+                        'MATCH' => $pattern,
+                        'COUNT' => $batch_size
+                    ]);
+                    
+                    if ($scan_result === false) {
+                        break;
+                    }
+                    
+                    // Collect keys for deletion
+                    if (!empty($scan_result)) {
+                        $keys_to_delete = array_merge($keys_to_delete, $scan_result);
+                        
+                        // Delete in batches to avoid memory issues
+                        if (count($keys_to_delete) >= $batch_size) {
+                            $results['deleted_count'] += $this->redis->del($keys_to_delete);
+                            $keys_to_delete = [];
+                        }
+                    }
+                } while ($iterator > 0);
+                
+                // Delete any remaining keys
+                if (!empty($keys_to_delete)) {
+                    $results['deleted_count'] += $this->redis->del($keys_to_delete);
                 }
                 
                 // Log the operation

@@ -296,8 +296,6 @@ define('ZIPPICKS_API_KEY', 'your-api-key-here');</pre>
      * Display statistics page
      */
     public function display_stats_page() {
-        global $wpdb;
-        
         $stats = get_option('zippicks_geo_stats', []);
         
         // Get location history stats from API

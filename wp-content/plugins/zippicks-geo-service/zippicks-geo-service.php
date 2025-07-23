@@ -26,6 +26,7 @@ define('ZIPPICKS_GEO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ZIPPICKS_GEO_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('ZIPPICKS_GEO_PLUGIN_FILE', __FILE__);
 define('ZIPPICKS_GEO_DB_VERSION', '1.0.0');
+define('ZIPPICKS_GEO_INITIALIZED', false);
 
 // Error codes
 define('ZIPPICKS_GEO_ERRORS', [
@@ -50,6 +51,11 @@ class ZipPicks_Geo_Service {
     private static $instance = null;
     
     /**
+     * Initialization flag
+     */
+    private static $initialized = false;
+    
+    /**
      * Service instances
      */
     private $api_client;
@@ -67,6 +73,13 @@ class ZipPicks_Geo_Service {
             self::$instance = new self();
         }
         return self::$instance;
+    }
+    
+    /**
+     * Check if plugin is initialized
+     */
+    public static function is_initialized() {
+        return self::$initialized;
     }
     
     /**
@@ -153,6 +166,9 @@ class ZipPicks_Geo_Service {
             $this->location_detector->set_logger($logger);
             $this->distance_calculator->set_logger($logger);
         }
+        
+        // Mark as initialized
+        self::$initialized = true;
     }
     
     /**
@@ -238,9 +254,9 @@ class ZipPicks_Geo_Service {
      * Get or create session ID using WordPress-friendly methods
      */
     private function get_session_id() {
-        // Delegate to location detector for consistent session handling
+        // Ensure services are initialized before use
         if (!$this->location_detector) {
-            $this->location_detector = new Location_Detector();
+            $this->init_services();
         }
         
         return $this->location_detector->get_session_id();
@@ -292,24 +308,40 @@ add_action('plugins_loaded', function() {
 // Global helper functions
 if (!function_exists('zippicks_geo')) {
     function zippicks_geo() {
+        // Check if plugin is initialized before returning instance
+        if (!ZipPicks_Geo_Service::is_initialized()) {
+            return null;
+        }
         return ZipPicks_Geo_Service::get_instance();
     }
 }
 
 if (!function_exists('zippicks_get_location')) {
     function zippicks_get_location($user_id = null, $session_id = null) {
-        return zippicks_geo()->get_current_location($user_id, $session_id);
+        $geo = zippicks_geo();
+        if (!$geo) {
+            return new \WP_Error('geo_not_ready', 'Geo service not initialized');
+        }
+        return $geo->get_current_location($user_id, $session_id);
     }
 }
 
 if (!function_exists('zippicks_calculate_distance')) {
     function zippicks_calculate_distance($lat1, $lng1, $lat2, $lng2, $unit = 'miles') {
-        return zippicks_geo()->calculate_distance($lat1, $lng1, $lat2, $lng2, $unit);
+        $geo = zippicks_geo();
+        if (!$geo) {
+            return new \WP_Error('geo_not_ready', 'Geo service not initialized');
+        }
+        return $geo->calculate_distance($lat1, $lng1, $lat2, $lng2, $unit);
     }
 }
 
 if (!function_exists('zippicks_find_nearby')) {
     function zippicks_find_nearby($lat, $lng, $radius_miles = 5, $limit = 20) {
-        return zippicks_geo()->find_nearby($lat, $lng, $radius_miles, $limit);
+        $geo = zippicks_geo();
+        if (!$geo) {
+            return new \WP_Error('geo_not_ready', 'Geo service not initialized');
+        }
+        return $geo->find_nearby($lat, $lng, $radius_miles, $limit);
     }
 }

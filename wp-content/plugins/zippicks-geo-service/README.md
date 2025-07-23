@@ -11,13 +11,20 @@ WordPress plugin that integrates with the ZipBusiness API to provide location-ba
 
 ## Configuration
 
-Add the following to your `wp-config.php` file:
+### Required Environment Variables
+
+The following environment variables must be set in your `wp-config.php` file:
 
 ```php
 // ZipPicks API Configuration
 define('ZIPPICKS_API_URL', 'https://zipbusiness-api.onrender.com');
-define('ZIPPICKS_API_KEY', 'your-api-key-here');
+define('ZIPPICKS_API_KEY', getenv('ZIPPICKS_API_KEY') ?: 'your-api-key-here');
+
+// Google Maps API (if using map features)
+define('GOOGLE_MAPS_API_KEY', getenv('GOOGLE_MAPS_API_KEY') ?: '');
 ```
+
+**Security Note**: Never commit actual API keys to version control. Set these as environment variables on your server or in a local `.env` file (which must be in `.gitignore`).
 
 ## Features
 

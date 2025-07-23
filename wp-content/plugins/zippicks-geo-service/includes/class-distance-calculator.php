@@ -205,7 +205,9 @@ class Distance_Calculator {
         }
         
         // Fallback: return empty array if API is not available
-        error_log('ZipPicks Geo: API client not available for finding nearby restaurants');
+        if ($this->logger) {
+            $this->logger->error('ZipPicks Geo: API client not available for finding nearby restaurants');
+        }
         return [];
     }
     
