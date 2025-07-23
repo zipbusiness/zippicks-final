@@ -242,9 +242,44 @@ class Admin {
      * Display settings page
      */
     public function display_settings_page() {
+        // Check API configuration
+        $api_configured = false;
+        $api_key = '';
+        $api_url = '';
+        
+        if (defined('ZIPPICKS_API_KEY')) {
+            $api_key = ZIPPICKS_API_KEY;
+            $api_configured = true;
+        } elseif (get_option('zippicks_api_key')) {
+            $api_key = get_option('zippicks_api_key');
+            $api_configured = true;
+        }
+        
+        if (defined('ZIPPICKS_API_URL')) {
+            $api_url = ZIPPICKS_API_URL;
+        } else {
+            $api_url = 'https://zipbusiness-api.onrender.com';
+        }
         ?>
         <div class="wrap">
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
+            
+            <?php if (!$api_configured): ?>
+            <div class="notice notice-error">
+                <p><strong>API Configuration Required</strong></p>
+                <p>The ZipPicks API is not configured. Add the following to your wp-config.php file:</p>
+                <pre style="background: #f5f5f5; padding: 10px; margin: 10px 0;">
+define('ZIPPICKS_API_URL', 'https://zipbusiness-api.onrender.com');
+define('ZIPPICKS_API_KEY', 'your-api-key-here');</pre>
+                <p>To generate an API key, run: <code>wp eval "echo zippicks_generate_api_key();"</code></p>
+            </div>
+            <?php else: ?>
+            <div class="notice notice-success">
+                <p><strong>API Configured</strong></p>
+                <p>API URL: <code><?php echo esc_html($api_url); ?></code></p>
+                <p>API Key: <code><?php echo esc_html(substr($api_key, 0, 10) . '...' . substr($api_key, -4)); ?></code></p>
+            </div>
+            <?php endif; ?>
             
             <form method="post" action="options.php">
                 <?php
@@ -646,6 +681,8 @@ class Admin {
         
         wp_localize_script('zippicks-geo-admin', 'zippicks_geo_admin', [
             'ajax_url' => admin_url('admin-ajax.php'),
+            'rest_url' => rest_url(),
+            'rest_nonce' => wp_create_nonce('wp_rest'),
             'nonce' => wp_create_nonce('zippicks_geo_admin'),
         ]);
     }

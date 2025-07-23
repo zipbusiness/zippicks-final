@@ -9,6 +9,9 @@
 
 namespace ZipPicks\Geo;
 
+// Load configuration
+require_once __DIR__ . '/config.php';
+
 class REST_Controller {
     
     /**
@@ -321,26 +324,28 @@ class REST_Controller {
      * @return \WP_REST_Response
      */
     public function calculate_distance($request) {
-        $from = $request->get_param('from');
-        $to = $request->get_param('to');
-        $unit = $request->get_param('unit');
+        $from_lat = $request->get_param('from_lat');
+        $from_lng = $request->get_param('from_lng');
+        $to_locations = $request->get_param('to_locations');
         
-        $distance = $this->distance_calculator->calculate_distance(
-            $from['lat'],
-            $from['lng'],
-            $to['lat'],
-            $to['lng'],
-            $unit
-        );
+        // Call the actual ZipBusiness API
+        $response = make_api_request('/wp/geo/distance', [
+            'method' => 'POST',
+            'body' => json_encode([
+                'from_lat' => $from_lat,
+                'from_lng' => $from_lng,
+                'to_locations' => $to_locations
+            ])
+        ]);
         
-        $response_data = [
-            'distance' => round($distance, 2),
-            'unit' => $unit,
-            'from' => $from,
-            'to' => $to,
-        ];
+        if (is_wp_error($response)) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => $response->get_error_message()
+            ], 500);
+        }
         
-        return rest_ensure_response($response_data);
+        return rest_ensure_response($response);
     }
     
     /**

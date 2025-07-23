@@ -92,7 +92,7 @@ jQuery(document).ready(function($) {
         });
     });
     
-    // Distance calculator
+    // Distance calculator - Uses the actual API
     $('#calculate-distance').on('click', function() {
         const fromLat = parseFloat($('#from-lat').val());
         const fromLng = parseFloat($('#from-lng').val());
@@ -104,17 +104,45 @@ jQuery(document).ready(function($) {
             return;
         }
         
-        // Calculate using Haversine formula
-        const R = 3959; // Earth radius in miles
-        const dLat = toRad(toLat - fromLat);
-        const dLng = toRad(toLng - fromLng);
-        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                  Math.cos(toRad(fromLat)) * Math.cos(toRad(toLat)) *
-                  Math.sin(dLng/2) * Math.sin(dLng/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        const distance = R * c;
+        const $button = $(this);
+        const $result = $('#distance-result');
+        const originalText = $button.text();
         
-        $('#distance-result').html(` = <strong>${distance.toFixed(2)} miles</strong> (${(distance * 1.60934).toFixed(2)} km)`);
+        $button.prop('disabled', true).text('Calculating...');
+        $result.html('');
+        
+        // Call the actual API endpoint
+        $.ajax({
+            url: zippicks_geo_admin.rest_url + 'zippicks/v1/geo/distance',
+            method: 'POST',
+            headers: {
+                'X-WP-Nonce': zippicks_geo_admin.rest_nonce,
+                'Content-Type': 'application/json'
+            },
+            data: JSON.stringify({
+                from_lat: fromLat,
+                from_lng: fromLng,
+                to_locations: [{
+                    latitude: toLat,
+                    longitude: toLng
+                }]
+            })
+        })
+        .done(function(response) {
+            if (response.success && response.distances && response.distances.length > 0) {
+                const distance = response.distances[0];
+                $result.html(` = <strong>${distance.distance_miles} miles</strong> (${distance.distance_km} km)`);
+            } else {
+                $result.html(' = <span style="color:red">Calculation failed</span>');
+            }
+        })
+        .fail(function(xhr) {
+            console.error('Distance calculation failed:', xhr);
+            $result.html(' = <span style="color:red">API Error: ' + (xhr.responseJSON?.message || 'Connection failed') + '</span>');
+        })
+        .always(function() {
+            $button.prop('disabled', false).text(originalText);
+        });
     });
     
     // Geohash encoder

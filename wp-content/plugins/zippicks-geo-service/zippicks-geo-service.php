@@ -104,8 +104,8 @@ class ZipPicks_Geo_Service {
      */
     private function init_hooks() {
         // Activation/deactivation hooks
-        register_activation_hook(__FILE__, [Installer::class, 'activate']);
-        register_deactivation_hook(__FILE__, [Installer::class, 'deactivate']);
+        register_activation_hook(__FILE__, ['\ZipPicks\Geo\Installer', 'activate']);
+        register_deactivation_hook(__FILE__, ['\ZipPicks\Geo\Installer', 'deactivate']);
         
         // Initialize services
         add_action('init', [$this, 'init_services']);
@@ -118,7 +118,7 @@ class ZipPicks_Geo_Service {
         
         // Admin initialization
         if (is_admin()) {
-            add_action('admin_menu', [$this, 'init_admin']);
+            add_action('init', [$this, 'init_admin']);
         }
         
         // User profile fields
