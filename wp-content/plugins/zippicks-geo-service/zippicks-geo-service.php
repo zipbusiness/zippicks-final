@@ -26,7 +26,6 @@ define('ZIPPICKS_GEO_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('ZIPPICKS_GEO_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('ZIPPICKS_GEO_PLUGIN_FILE', __FILE__);
 define('ZIPPICKS_GEO_DB_VERSION', '1.0.0');
-define('ZIPPICKS_GEO_INITIALIZED', false);
 
 // Error codes
 define('ZIPPICKS_GEO_ERRORS', [
