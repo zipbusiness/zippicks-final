@@ -1,0 +1,356 @@
+/**
+ * ZipPicks Smart Search Styles
+ */
+
+/* Search Form */
+.zippicks-search-form {
+    max-width: 600px;
+    margin: 0 auto 2rem;
+}
+
+.zippicks-search-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.zippicks-search-wrapper:focus-within {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.zippicks-search-input {
+    flex: 1;
+    padding: 12px 16px;
+    font-size: 16px;
+    border: none;
+    outline: none;
+    background: transparent;
+}
+
+.zippicks-search-button {
+    padding: 12px 24px;
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.zippicks-search-button:hover {
+    background: #4f46e5;
+}
+
+/* Location Display */
+.zippicks-location-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 1rem;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.zippicks-location-display {
+    font-weight: 500;
+}
+
+.zippicks-update-location {
+    color: #6366f1;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.zippicks-update-location:hover {
+    text-decoration: underline;
+}
+
+/* Search Results */
+.zippicks-search-results {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Intent Indicator */
+.zippicks-intent-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    margin-bottom: 1rem;
+    background: #f3f4f6;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #4b5563;
+}
+
+.intent-vibe {
+    background: #ede9fe;
+    color: #6d28d9;
+}
+
+.intent-utility {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.intent-hybrid {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+/* Search Result Cards */
+.zippicks-search-result {
+    display: flex;
+    align-items: start;
+    gap: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.zippicks-search-result:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.zippicks-search-result.coming-soon {
+    background: #f9fafb;
+    border-style: dashed;
+}
+
+.result-content {
+    flex: 1;
+}
+
+.result-title {
+    margin: 0 0 4px;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.result-title a {
+    color: #111827;
+    text-decoration: none;
+}
+
+.result-title a:hover {
+    color: #6366f1;
+}
+
+.result-meta {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.result-category {
+    font-weight: 500;
+}
+
+.result-distance::before {
+    content: "•";
+    margin-right: 12px;
+}
+
+.result-description {
+    margin: 8px 0;
+    color: #4b5563;
+    line-height: 1.5;
+}
+
+.result-vibes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.vibe-tag {
+    display: inline-block;
+    padding: 4px 10px;
+    background: #ede9fe;
+    color: #6d28d9;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.result-action {
+    flex-shrink: 0;
+}
+
+/* Notify Button */
+.zippicks-notify-btn {
+    padding: 8px 16px;
+    background: #fff;
+    color: #6366f1;
+    border: 2px solid #6366f1;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.zippicks-notify-btn:hover {
+    background: #6366f1;
+    color: #fff;
+}
+
+.zippicks-notify-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.zippicks-notify-btn.success {
+    background: #10b981;
+    border-color: #10b981;
+    color: #fff;
+}
+
+/* Loading State */
+.zippicks-loading {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+}
+
+.zippicks-loading .spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+    border: 2px solid #e5e7eb;
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: spinner 0.8s linear infinite;
+}
+
+@keyframes spinner {
+    to { transform: rotate(360deg); }
+}
+
+/* No Results */
+.zippicks-no-results,
+.zippicks-search-error {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+}
+
+.zippicks-search-error {
+    color: #ef4444;
+}
+
+/* Autocomplete */
+#zippicks-autocomplete {
+    position: absolute;
+    z-index: 9999;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    display: none;
+}
+
+#zippicks-autocomplete.active {
+    display: block;
+}
+
+.zippicks-suggestions {
+    list-style: none;
+    margin: 0;
+    padding: 4px 0;
+}
+
+.zippicks-suggestion {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.zippicks-suggestion:hover,
+.zippicks-suggestion.selected {
+    background: #f3f4f6;
+}
+
+.suggestion-icon {
+    font-size: 16px;
+    opacity: 0.7;
+}
+
+.suggestion-label {
+    flex: 1;
+    font-size: 14px;
+}
+
+.suggestion-meta {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.suggestion-vibe .suggestion-label {
+    color: #6d28d9;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .zippicks-search-form {
+        margin: 0 1rem 2rem;
+    }
+    
+    .zippicks-search-wrapper {
+        flex-direction: column;
+    }
+    
+    .zippicks-search-input,
+    .zippicks-search-button {
+        width: 100%;
+    }
+    
+    .zippicks-search-button {
+        border-top: 1px solid #e5e7eb;
+    }
+    
+    .zippicks-search-result {
+        flex-direction: column;
+    }
+    
+    .result-action {
+        width: 100%;
+        margin-top: 12px;
+    }
+    
+    .zippicks-notify-btn {
+        width: 100%;
+    }
+}
+
+/* Shortcode Wrapper */
+.zippicks-search-widget {
+    padding: 2rem 0;
+}
+
+.zippicks-search-widget h2,
+.zippicks-search-widget h3 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}

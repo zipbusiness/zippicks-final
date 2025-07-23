@@ -1,0 +1,107 @@
+// Key changes needed in search.js to use security helper:
+
+// 1. Replace direct HTML string concatenation in renderResult() method:
+
+// OLD (INSECURE):
+renderResult: function(result, position) {
+    return `
+        <div class="zippicks-search-result ${resultClass}" 
+             data-zpid="${result.zpid}" 
+             data-position="${position}">
+            <h3>${result.name}</h3>
+        </div>
+    `;
+}
+
+// NEW (SECURE):
+renderResult: function(result, position) {
+    const resultDiv = ZipPicksSecurity.createElement('div', {
+        'class': 'zippicks-search-result ' + (result.exists ? '' : 'coming-soon'),
+        'data-zpid': ZipPicksSecurity.sanitizeZpid(result.zpid),
+        'data-position': position.toString()
+    });
+    
+    const contentDiv = ZipPicksSecurity.createElement('div', {
+        'class': 'result-content'
+    });
+    
+    // Title
+    const title = ZipPicksSecurity.createElement('h3', {
+        'class': 'result-title'
+    });
+    
+    if (!result.exists) {
+        title.textContent = result.name;
+    } else {
+        const link = ZipPicksSecurity.createElement('a', {
+            'href': ZipPicksSecurity.sanitizeUrl(result.url)
+        }, result.name);
+        title.appendChild(link);
+    }
+    
+    contentDiv.appendChild(title);
+    
+    // Meta information
+    if (result.category || result.distance) {
+        const metaDiv = ZipPicksSecurity.createElement('div', {
+            'class': 'result-meta'
+        });
+        
+        if (result.category) {
+            const categorySpan = ZipPicksSecurity.createElement('span', {
+                'class': 'result-category'
+            }, result.category);
+            metaDiv.appendChild(categorySpan);
+        }
+        
+        if (result.distance) {
+            const distanceSpan = ZipPicksSecurity.createElement('span', {
+                'class': 'result-distance'
+            }, result.distance + ' mi');
+            metaDiv.appendChild(distanceSpan);
+        }
+        
+        contentDiv.appendChild(metaDiv);
+    }
+    
+    resultDiv.appendChild(contentDiv);
+    
+    return resultDiv;
+}
+
+// 2. Update performSearch to validate query:
+performSearch: function(query) {
+    // Validate query first
+    const validation = ZipPicksSecurity.validateSearchQuery(query);
+    if (!validation.valid) {
+        this.showError(validation.error);
+        return;
+    }
+    
+    // Use sanitized query
+    query = validation.sanitized;
+    
+    // ... rest of search logic
+}
+
+// 3. Update AJAX error handling to check for rate limits:
+.fail((jqXHR, textStatus, errorThrown) => {
+    if (ZipPicksSecurity.isRateLimited(jqXHR)) {
+        ZipPicksSecurity.handleRateLimit(jqXHR.responseJSON, () => {
+            this.performSearch(this.state.currentQuery);
+        });
+    } else {
+        this.showError(zippicks_search.strings.error);
+    }
+})
+
+// 4. Update email validation in notify handler:
+handleNotifyClick: function(e) {
+    // ... existing code ...
+    
+    if (email && ZipPicksSecurity.validateEmail(email)) {
+        this.submitNotification(zpid, email, $btn);
+    } else {
+        this.showError('Please enter a valid email address');
+    }
+}
