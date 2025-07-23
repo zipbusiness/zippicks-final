@@ -353,9 +353,11 @@ class Privacy_Manager {
         
         // Get location history
         $table = $wpdb->prefix . 'user_locations';
-        if ($wpdb->get_var("SHOW TABLES LIKE '$table'") === $table) {
+        $escaped_table = esc_sql($table);
+        
+        if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table)) === $table) {
             $history = $wpdb->get_results($wpdb->prepare(
-                "SELECT * FROM $table WHERE wp_user_id = %d ORDER BY created_at DESC",
+                "SELECT * FROM `{$escaped_table}` WHERE wp_user_id = %d ORDER BY created_at DESC",
                 $user_id
             ), ARRAY_A);
             

@@ -29,6 +29,7 @@ class Geo_API_Client {
     const ENDPOINT_NEARBY = '/wp/geo/nearby';
     const ENDPOINT_DISTANCE = '/wp/geo/distance';
     const ENDPOINT_GEOCODE = '/wp/geo/geocode';
+    const ENDPOINT_STATS = '/wp/geo/stats';
     
     /**
      * HTTP request timeout
@@ -46,12 +47,33 @@ class Geo_API_Client {
     private $api_key;
     
     /**
+     * Logger instance
+     * @var \Psr\Log\LoggerInterface|null
+     */
+    private $logger;
+    
+    /**
+     * Last error message
+     * @var string|null
+     */
+    private $last_error = null;
+    
+    /**
      * Constructor
      */
     public function __construct() {
         // Use shared ZipPicks API configuration
         $this->api_url = $this->get_api_url();
         $this->api_key = $this->get_api_key();
+    }
+    
+    /**
+     * Set logger instance
+     * 
+     * @param \Psr\Log\LoggerInterface $logger
+     */
+    public function set_logger($logger) {
+        $this->logger = $logger;
     }
     
     /**
@@ -295,6 +317,15 @@ class Geo_API_Client {
     }
     
     /**
+     * Get location statistics from the API
+     * 
+     * @return array|false Response data or false on failure
+     */
+    public function get_location_stats() {
+        return $this->make_request(self::ENDPOINT_STATS, 'GET');
+    }
+    
+    /**
      * Make HTTP request to API
      * 
      * @param string $endpoint API endpoint
@@ -357,6 +388,9 @@ class Geo_API_Client {
             return false;
         }
         
+        // Clear last error on successful response
+        $this->last_error = null;
+        
         return $parsed;
     }
     
@@ -376,6 +410,9 @@ class Geo_API_Client {
      * @param string $message Error message
      */
     private function log_error($message) {
+        // Store the last error for retrieval
+        $this->last_error = $message;
+        
         error_log('ZipPicks Geo API Error: ' . $message);
         
         // Also log to ZipPicks Foundation logger if available
@@ -391,8 +428,7 @@ class Geo_API_Client {
      * @return string|null
      */
     public function get_last_error() {
-        // TODO: Implement error tracking
-        return null;
+        return $this->last_error;
     }
     
     /**

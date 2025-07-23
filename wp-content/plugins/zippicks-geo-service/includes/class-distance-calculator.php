@@ -31,6 +31,12 @@ class Distance_Calculator {
     private $api_client;
     
     /**
+     * Logger instance
+     * @var \Psr\Log\LoggerInterface|null
+     */
+    private $logger;
+    
+    /**
      * Set cache instance
      */
     public function set_cache(Geo_Cache $cache) {
@@ -42,6 +48,13 @@ class Distance_Calculator {
      */
     public function set_api_client(Geo_API_Client $api_client) {
         $this->api_client = $api_client;
+    }
+    
+    /**
+     * Set logger instance
+     */
+    public function set_logger($logger) {
+        $this->logger = $logger;
     }
     
     /**

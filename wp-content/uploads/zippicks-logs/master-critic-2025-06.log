@@ -1,0 +1,71 @@
+[2025-06-28 00:53:06] FATAL: Uncaught Error: Call to undefined method ZipPicks_Master_Critic_Post_Type::init() in /zippicks-www/wp-content/plugins/zippicks-master-critic/includes/class-master-critic.php:213
+Stack trace:
+#0 /zippicks-www/wp-includes/class-wp-hook.php(324): ZipPicks_Master_Critic->init('')
+#1 /zippicks-www/wp-includes/class-wp-hook.php(348): WP_Hook->apply_filters(NULL, Array)
+#2 /zippicks-www/wp-includes/plugin.php(517): WP_Hook->do_action(Array)
+#3 /zippicks-www/wp-settings.php(727): do_action('init')
+#4 /zippicks-www/wp-config.php(89): require_once('/zippicks-www/w...')
+#5 /zippicks-www/wp-load.php(50): require_once('/zippicks-www/w...')
+#6 /zippicks-www/wp-admin/admin.php(35): require_once('/zippicks-www/w...')
+#7 /zippicks-www/wp-admin/plugins.php(10): require_once('/zippicks-www/w...')
+#8 {main}
+  thrown in class-master-critic.php:213
+[2025-06-28 00:53:06] FATAL: Uncaught Error: Call to undefined method ZipPicks_Master_Critic_Post_Type::init() in /zippicks-www/wp-content/plugins/zippicks-master-critic/includes/class-master-critic.php:213
+Stack trace:
+#0 /zippicks-www/wp-includes/class-wp-hook.php(324): ZipPicks_Master_Critic->init('')
+#1 /zippicks-www/wp-includes/class-wp-hook.php(348): WP_Hook->apply_filters(NULL, Array)
+#2 /zippicks-www/wp-includes/plugin.php(517): WP_Hook->do_action(Array)
+#3 /zippicks-www/wp-settings.php(727): do_action('init')
+#4 /zippicks-www/wp-config.php(89): require_once('/zippicks-www/w...')
+#5 /zippicks-www/wp-load.php(50): require_once('/zippicks-www/w...')
+#6 /zippicks-www/wp-blog-header.php(13): require_once('/zippicks-www/w...')
+#7 /zippicks-www/index.php(17): require('/zippicks-www/w...')
+#8 {main}
+  thrown in class-master-critic.php:213
+[2025-06-28 00:53:28] FATAL: Uncaught Error: Call to undefined method ZipPicks_Master_Critic_Post_Type::init() in /zippicks-www/wp-content/plugins/zippicks-master-critic/includes/class-master-critic.php:213
+Stack trace:
+#0 /zippicks-www/wp-includes/class-wp-hook.php(324): ZipPicks_Master_Critic->init('')
+#1 /zippicks-www/wp-includes/class-wp-hook.php(348): WP_Hook->apply_filters(NULL, Array)
+#2 /zippicks-www/wp-includes/plugin.php(517): WP_Hook->do_action(Array)
+#3 /zippicks-www/wp-settings.php(727): do_action('init')
+#4 /zippicks-www/wp-config.php(89): require_once('/zippicks-www/w...')
+#5 /zippicks-www/wp-load.php(50): require_once('/zippicks-www/w...')
+#6 /zippicks-www/wp-blog-header.php(13): require_once('/zippicks-www/w...')
+#7 /zippicks-www/index.php(17): require('/zippicks-www/w...')
+#8 {main}
+  thrown in class-master-critic.php:213
+[2025-06-28 00:53:55] FATAL: Uncaught Error: Call to undefined method ZipPicks_Master_Critic_Post_Type::init() in /zippicks-www/wp-content/plugins/zippicks-master-critic/includes/class-master-critic.php:213
+Stack trace:
+#0 /zippicks-www/wp-includes/class-wp-hook.php(324): ZipPicks_Master_Critic->init('')
+#1 /zippicks-www/wp-includes/class-wp-hook.php(348): WP_Hook->apply_filters(NULL, Array)
+#2 /zippicks-www/wp-includes/plugin.php(517): WP_Hook->do_action(Array)
+#3 /zippicks-www/wp-settings.php(727): do_action('init')
+#4 /zippicks-www/wp-config.php(89): require_once('/zippicks-www/w...')
+#5 /zippicks-www/wp-load.php(50): require_once('/zippicks-www/w...')
+#6 /zippicks-www/wp-blog-header.php(13): require_once('/zippicks-www/w...')
+#7 /zippicks-www/index.php(17): require('/zippicks-www/w...')
+#8 {main}
+  thrown in class-master-critic.php:213
+[2025-06-28 00:54:22] FATAL: Uncaught Error: Call to undefined method ZipPicks_Master_Critic_Post_Type::init() in /zippicks-www/wp-content/plugins/zippicks-master-critic/includes/class-master-critic.php:213
+Stack trace:
+#0 /zippicks-www/wp-includes/class-wp-hook.php(324): ZipPicks_Master_Critic->init('')
+#1 /zippicks-www/wp-includes/class-wp-hook.php(348): WP_Hook->apply_filters(NULL, Array)
+#2 /zippicks-www/wp-includes/plugin.php(517): WP_Hook->do_action(Array)
+#3 /zippicks-www/wp-settings.php(727): do_action('init')
+#4 /zippicks-www/wp-config.php(89): require_once('/zippicks-www/w...')
+#5 /zippicks-www/wp-load.php(50): require_once('/zippicks-www/w...')
+#6 /zippicks-www/wp-admin/admin-ajax.php(22): require_once('/zippicks-www/w...')
+#7 {main}
+  thrown in class-master-critic.php:213
+[2025-06-28 00:54:24] FATAL: Uncaught Error: Call to undefined method ZipPicks_Master_Critic_Post_Type::init() in /zippicks-www/wp-content/plugins/zippicks-master-critic/includes/class-master-critic.php:213
+Stack trace:
+#0 /zippicks-www/wp-includes/class-wp-hook.php(324): ZipPicks_Master_Critic->init('')
+#1 /zippicks-www/wp-includes/class-wp-hook.php(348): WP_Hook->apply_filters(NULL, Array)
+#2 /zippicks-www/wp-includes/plugin.php(517): WP_Hook->do_action(Array)
+#3 /zippicks-www/wp-settings.php(727): do_action('init')
+#4 /zippicks-www/wp-config.php(89): require_once('/zippicks-www/w...')
+#5 /zippicks-www/wp-load.php(50): require_once('/zippicks-www/w...')
+#6 /zippicks-www/wp-admin/admin.php(35): require_once('/zippicks-www/w...')
+#7 /zippicks-www/wp-admin/plugins.php(10): require_once('/zippicks-www/w...')
+#8 {main}
+  thrown in class-master-critic.php:213

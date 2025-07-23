@@ -324,17 +324,39 @@ class REST_Controller {
      * @return \WP_REST_Response
      */
     public function calculate_distance($request) {
-        $from_lat = $request->get_param('from_lat');
-        $from_lng = $request->get_param('from_lng');
-        $to_locations = $request->get_param('to_locations');
+        // Get parameters as objects matching the registered route structure
+        $from = $request->get_param('from');
+        $to = $request->get_param('to');
+        $unit = $request->get_param('unit') ?: 'miles';
         
-        // Call the actual ZipBusiness API
+        // Validate that from and to are objects with lat/lng properties
+        if (!is_array($from) || !isset($from['lat']) || !isset($from['lng'])) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => 'Invalid "from" parameter. Expected object with lat and lng properties.'
+            ], 400);
+        }
+        
+        if (!is_array($to) || !isset($to['lat']) || !isset($to['lng'])) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => 'Invalid "to" parameter. Expected object with lat and lng properties.'
+            ], 400);
+        }
+        
+        // Call the actual ZipBusiness API with properly structured data
         $response = make_api_request('/wp/geo/distance', [
             'method' => 'POST',
             'body' => json_encode([
-                'from_lat' => $from_lat,
-                'from_lng' => $from_lng,
-                'to_locations' => $to_locations
+                'from' => [
+                    'lat' => floatval($from['lat']),
+                    'lng' => floatval($from['lng'])
+                ],
+                'to' => [
+                    'lat' => floatval($to['lat']),
+                    'lng' => floatval($to['lng'])
+                ],
+                'unit' => $unit
             ])
         ]);
         
@@ -478,7 +500,7 @@ class REST_Controller {
         $limit = $this->rate_limits[$user_type];
         
         // Generate rate limit key
-        $identifier = is_user_logged_in() ? get_current_user_id() : $_SERVER['REMOTE_ADDR'];
+        $identifier = is_user_logged_in() ? get_current_user_id() : $this->get_client_ip();
         $key = 'geo_rate_' . md5($user_type . '_' . $identifier);
         
         // Check current count
@@ -496,5 +518,15 @@ class REST_Controller {
         set_transient($key, $count + 1, 60);
         
         return true;
+    }
+    
+    /**
+     * Get client IP address considering proxy headers
+     * 
+     * @return string
+     */
+    private function get_client_ip() {
+        $ip_geolocation = new IP_Geolocation();
+        return $ip_geolocation->get_client_ip();
     }
 }

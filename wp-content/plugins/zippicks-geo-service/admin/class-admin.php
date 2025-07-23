@@ -300,19 +300,19 @@ define('ZIPPICKS_API_KEY', 'your-api-key-here');</pre>
         
         $stats = get_option('zippicks_geo_stats', []);
         
-        // Get location history stats
-        $table = $wpdb->prefix . 'user_locations';
-        $location_stats = [];
+        // Get location history stats from API
+        $api_client = new Geo_API_Client();
+        $api_stats = $api_client->get_location_stats();
         
-        if ($wpdb->get_var("SHOW TABLES LIKE '$table'") === $table) {
+        if ($api_stats && isset($api_stats['location_stats'])) {
+            $location_stats = $api_stats['location_stats'];
+        } else {
+            // Fallback if API is unavailable
             $location_stats = [
-                'total' => $wpdb->get_var("SELECT COUNT(*) FROM $table"),
-                'today' => $wpdb->get_var($wpdb->prepare(
-                    "SELECT COUNT(*) FROM $table WHERE DATE(created_at) = %s",
-                    current_time('Y-m-d')
-                )),
-                'unique_users' => $wpdb->get_var("SELECT COUNT(DISTINCT wp_user_id) FROM $table WHERE wp_user_id IS NOT NULL"),
-                'unique_sessions' => $wpdb->get_var("SELECT COUNT(DISTINCT session_id) FROM $table"),
+                'total' => 0,
+                'today' => 0,
+                'unique_users' => 0,
+                'unique_sessions' => 0
             ];
         }
         
@@ -730,12 +730,25 @@ define('ZIPPICKS_API_KEY', 'your-api-key-here');</pre>
             wp_die();
         }
         
-        // Clear transients
-        global $wpdb;
-        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_zippicks:geo:%'");
-        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_zippicks:geo:%'");
+        // Use Geo_Cache class to clear caches properly
+        $geo_cache = new Geo_Cache();
+        $results = $geo_cache->clear_all_caches();
         
-        wp_send_json_success(['message' => __('Cache cleared successfully!', 'zippicks-geo')]);
+        if ($results['success']) {
+            wp_send_json_success([
+                'message' => __('Cache cleared successfully!', 'zippicks-geo'),
+                'details' => sprintf(
+                    __('%d cache entries cleared using %s', 'zippicks-geo'),
+                    $results['deleted_count'],
+                    $results['method']
+                )
+            ]);
+        } else {
+            wp_send_json_error([
+                'message' => __('Failed to clear cache', 'zippicks-geo'),
+                'error' => $results['error'] ?? __('Unknown error', 'zippicks-geo')
+            ]);
+        }
     }
     
     /**

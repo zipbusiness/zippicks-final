@@ -145,6 +145,14 @@ class ZipPicks_Geo_Service {
         $this->location_detector->set_api_client($this->api_client);
         $this->distance_calculator->set_cache($this->geo_cache);
         $this->distance_calculator->set_api_client($this->api_client);
+        
+        // Set logger if Foundation is available
+        if (function_exists('zippicks') && zippicks()->has('logger')) {
+            $logger = zippicks()->get('logger');
+            $this->api_client->set_logger($logger);
+            $this->location_detector->set_logger($logger);
+            $this->distance_calculator->set_logger($logger);
+        }
     }
     
     /**

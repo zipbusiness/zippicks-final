@@ -93,8 +93,7 @@ class Geo_Cache {
                         'error' => $e->getMessage(),
                         'code' => ZIPPICKS_GEO_ERRORS['GEO005'],
                         'host' => $host ?? '127.0.0.1',
-                        'port' => $port ?? 6379,
-                        'auth_required' => $this->get_redis_password() !== null
+                        'port' => $port ?? 6379
                     ]);
                 }
             }
@@ -249,6 +248,88 @@ class Geo_Cache {
         }
         
         return $this->redis->del($keys);
+    }
+    
+    /**
+     * Clear all geo-related caches
+     * 
+     * @return array Results of the cache clearing operation
+     */
+    public function clear_all_caches() {
+        $results = [
+            'success' => true,
+            'deleted_count' => 0,
+            'method' => $this->redis ? 'redis' : 'transients'
+        ];
+        
+        if ($this->redis) {
+            try {
+                // Get all keys with our prefix
+                $pattern = '*';
+                $keys = $this->redis->keys($pattern);
+                
+                if (!empty($keys)) {
+                    $results['deleted_count'] = $this->redis->del($keys);
+                }
+                
+                // Log the operation
+                if (function_exists('zippicks') && zippicks()->has('logger')) {
+                    $logger = zippicks()->get('logger');
+                    $logger->info('Geo cache cleared via Redis', [
+                        'keys_deleted' => $results['deleted_count']
+                    ]);
+                }
+            } catch (\Exception $e) {
+                $results['success'] = false;
+                $results['error'] = $e->getMessage();
+                
+                // Log the error
+                if (function_exists('zippicks') && zippicks()->has('logger')) {
+                    $logger = zippicks()->get('logger');
+                    $logger->error('Failed to clear geo cache via Redis', [
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+        } else {
+            // Fallback to clearing WordPress transients
+            global $wpdb;
+            
+            // Use proper prepared queries
+            $prefix = $wpdb->esc_like(self::KEY_PREFIX) . '%';
+            
+            // Delete transient values
+            $deleted_values = $wpdb->query(
+                $wpdb->prepare(
+                    "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+                    '_transient_' . $prefix
+                )
+            );
+            
+            // Delete transient timeouts
+            $deleted_timeouts = $wpdb->query(
+                $wpdb->prepare(
+                    "DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+                    '_transient_timeout_' . $prefix
+                )
+            );
+            
+            $results['deleted_count'] = $deleted_values + $deleted_timeouts;
+            
+            // Log the operation
+            if (function_exists('zippicks') && zippicks()->has('logger')) {
+                $logger = zippicks()->get('logger');
+                $logger->info('Geo cache cleared via transients', [
+                    'transients_deleted' => $deleted_values,
+                    'timeouts_deleted' => $deleted_timeouts
+                ]);
+            }
+        }
+        
+        // Fire action hook for cache clearing
+        do_action('zippicks_geo_cache_cleared', $results);
+        
+        return $results;
     }
     
     /**

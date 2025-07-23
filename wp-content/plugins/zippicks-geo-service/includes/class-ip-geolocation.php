@@ -248,7 +248,7 @@ class IP_Geolocation {
      * 
      * @return string
      */
-    private function get_client_ip() {
+    public function get_client_ip() {
         $remote_addr = $_SERVER['REMOTE_ADDR'] ?? '';
         
         // If remote address is not from a trusted proxy, return it directly

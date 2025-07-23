@@ -35,6 +35,12 @@ class Location_Detector {
     private $ip_service;
     
     /**
+     * Logger instance
+     * @var \Psr\Log\LoggerInterface|null
+     */
+    private $logger;
+    
+    /**
      * Default location (Los Angeles)
      */
     const DEFAULT_LOCATION = [
@@ -70,6 +76,13 @@ class Location_Detector {
      */
     public function set_api_client(Geo_API_Client $api_client) {
         $this->api_client = $api_client;
+    }
+    
+    /**
+     * Set logger instance
+     */
+    public function set_logger($logger) {
+        $this->logger = $logger;
     }
     
     /**
@@ -436,9 +449,8 @@ class Location_Detector {
             }
             
             // Log new session creation
-            if (function_exists('zippicks') && zippicks()->has('logger')) {
-                $logger = zippicks()->get('logger');
-                $logger->debug('New geo session created', [
+            if ($this->logger) {
+                $this->logger->debug('New geo session created', [
                     'session_id' => $session_id,
                     'user_id' => is_user_logged_in() ? get_current_user_id() : 0,
                     'headers_sent' => headers_sent()

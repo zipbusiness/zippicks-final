@@ -37,10 +37,11 @@ define('ZIPPICKS_API_KEY', 'your-api-key-here');
 
 The plugin provides WordPress REST endpoints that proxy to the ZipBusiness API:
 
-- `POST /wp-json/zippicks/v1/geo/distance` - Calculate distances
 - `POST /wp-json/zippicks/v1/geo/detect` - Detect location from IP
+- `POST /wp-json/zippicks/v1/geo/update` - Update user location
+- `POST /wp-json/zippicks/v1/geo/distance` - Calculate distances between two points
 - `POST /wp-json/zippicks/v1/geo/nearby` - Find nearby restaurants
-- `POST /wp-json/zippicks/v1/geo/geocode` - Geocode addresses
+- `POST /wp-json/zippicks/v1/geo/batch-distance` - Calculate distances for multiple points
 
 ## Troubleshooting
 
