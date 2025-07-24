@@ -22,6 +22,9 @@ class Installer {
         // Create capabilities
         self::create_capabilities();
         
+        // Schedule Cloudflare IP update cron job
+        Cloudflare_IP_Manager::schedule_cron();
+        
         // Flush rewrite rules for Business CPT
         flush_rewrite_rules();
         
@@ -36,8 +39,9 @@ class Installer {
         // Remove capabilities
         self::remove_capabilities();
         
-        // Clear scheduled events if any
+        // Clear scheduled events
         wp_clear_scheduled_hook('zippicks_search_cache_cleanup');
+        Cloudflare_IP_Manager::unschedule_cron();
         
         // Flush rewrite rules
         flush_rewrite_rules();

@@ -351,21 +351,7 @@ class Error_Tracker {
      * @return string
      */
     private function get_client_ip() {
-        $ip_keys = ['HTTP_X_FORWARDED_FOR', 'HTTP_CLIENT_IP', 'REMOTE_ADDR'];
-        
-        foreach ($ip_keys as $key) {
-            if (!empty($_SERVER[$key])) {
-                $ip = $_SERVER[$key];
-                // Handle comma-separated IPs
-                if (strpos($ip, ',') !== false) {
-                    $ips = explode(',', $ip);
-                    $ip = trim($ips[0]);
-                }
-                return sanitize_text_field($ip);
-            }
-        }
-        
-        return '0.0.0.0';
+        return IP_Detector::get_client_ip();
     }
     
     /**

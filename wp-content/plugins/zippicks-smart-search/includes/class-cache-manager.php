@@ -36,6 +36,12 @@ class Cache_Manager {
     const UTILITY_TTL = 600;
     
     /**
+     * Search engine instance
+     * @var Search_Engine|null
+     */
+    private $search_engine = null;
+    
+    /**
      * Get cache instance
      * @return Cache_Manager
      */
@@ -53,6 +59,16 @@ class Cache_Manager {
      */
     public function is_available() {
         return wp_using_ext_object_cache();
+    }
+    
+    /**
+     * Set search engine instance
+     * 
+     * @param Search_Engine $search_engine
+     * @return void
+     */
+    public function set_search_engine($search_engine) {
+        $this->search_engine = $search_engine;
     }
     
     /**
@@ -179,7 +195,7 @@ class Cache_Manager {
         // Apply cache key filter for normalization
         $base_key = apply_filters('zippicks_search_cache_key', $query);
         
-        if (empty($base_key)) {
+        if ($base_key === null || $base_key === false || $base_key === '') {
             // Fallback to default key generation
             $base_key = 'search_' . md5(strtolower(trim($query)));
         }
@@ -259,7 +275,10 @@ class Cache_Manager {
             return $results;
         }
         
-        $search_engine = new Search_Engine();
+        // Use injected search engine or return early if not set
+        if (!$this->search_engine) {
+            return $results;
+        }
         
         foreach ($searches as $search_term) {
             // Check if already cached
@@ -269,7 +288,7 @@ class Cache_Manager {
             }
             
             // Perform search to warm cache
-            $search_results = $search_engine->search($search_term, $location);
+            $search_results = $this->search_engine->search($search_term, $location);
             
             if (!is_wp_error($search_results)) {
                 $results['success']++;

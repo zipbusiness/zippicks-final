@@ -1,0 +1,87 @@
+/**
+ * ZipPicks Smart Search Admin Styles
+ * 
+ * @package ZipPicks_Smart_Search
+ */
+
+/* Analytics Grid Layout */
+.analytics-grid {
+    display: grid;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+/* Analytics Card */
+.analytics-card {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    padding: 20px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+/* Statistics Grid */
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 20px;
+    margin-top: 15px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 600;
+    color: #23282d;
+}
+
+.stat-label {
+    color: #666;
+    font-size: 14px;
+}
+
+/* Analytics Table */
+.analytics-table {
+    width: 100%;
+    margin-top: 15px;
+}
+
+.analytics-table th,
+.analytics-table td {
+    padding: 8px 12px;
+    text-align: left;
+}
+
+/* Intent Distribution */
+.intent-distribution {
+    margin-top: 15px;
+}
+
+.intent-bar {
+    margin-bottom: 15px;
+}
+
+.intent-label {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+/* Progress Bar */
+.progress-bar {
+    background: #f0f0f1;
+    height: 25px;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+}

@@ -36,6 +36,9 @@ class Search_Engine {
         $this->api_client = API_Client::instance();
         $this->cache_manager = Cache_Manager::instance();
         $this->analytics = Analytics::instance();
+        
+        // Set this instance on the cache manager to avoid circular dependency
+        $this->cache_manager->set_search_engine($this);
     }
     
     /**
@@ -54,11 +57,14 @@ class Search_Engine {
         // Classify intent
         $classification = Intent_Classifier::classify($query, $context);
         
-        // Generate cache key
-        $cache_key = $this->generate_cache_key($query, $params, $classification);
+        // Prepare location data for cache
+        $location = [
+            'lat' => $params['lat'] ?? null,
+            'lng' => $params['lng'] ?? null
+        ];
         
         // Check cache
-        $cached_results = $this->cache_manager->get($cache_key);
+        $cached_results = $this->cache_manager->get_search_results($query, $location, $params);
         if ($cached_results !== false && !isset($params['skip_cache'])) {
             $cached_results['cached'] = true;
             $this->track_search($query, $classification, $cached_results, $context, microtime(true) - $start_time);
@@ -87,7 +93,7 @@ class Search_Engine {
         ];
         
         // Cache results
-        $this->cache_manager->set($cache_key, $response);
+        $this->cache_manager->set_search_results($query, $location, $params, $response, $classification['intent']);
         
         // Track search
         $this->track_search($query, $classification, $response, $context, $search_time);
@@ -348,8 +354,13 @@ class Search_Engine {
      * @return array
      */
     private function search_general($query, $params, $context) {
-        // Simple keyword search
-        $response = $this->api_client->search_restaurants($params);
+        // Add query/keyword to params for keyword search
+        $search_params = array_merge($params, [
+            'query' => $query,
+            'keyword' => $query  // Some APIs use 'keyword' instead of 'query'
+        ]);
+        
+        $response = $this->api_client->search_restaurants($search_params);
         
         if (is_wp_error($response)) {
             return ['results' => [], 'total' => 0];
@@ -733,29 +744,6 @@ class Search_Engine {
         // This would integrate with the Taste Graph
         // For now, return empty array
         return [];
-    }
-    
-    /**
-     * Generate cache key
-     * 
-     * @param string $query
-     * @param array $params
-     * @param array $classification
-     * @return string
-     */
-    private function generate_cache_key($query, $params, $classification) {
-        $key_parts = [
-            'search',
-            md5($query),
-            $classification['intent'],
-            $params['lat'] ?? '',
-            $params['lng'] ?? '',
-            $params['radius'] ?? 10,
-            $params['limit'] ?? 20,
-            $params['offset'] ?? 0,
-        ];
-        
-        return implode(':', array_filter($key_parts));
     }
     
     /**

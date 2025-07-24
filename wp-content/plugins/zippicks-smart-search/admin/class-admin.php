@@ -18,6 +18,9 @@ class Admin {
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
         add_action('admin_init', [$this, 'register_settings']);
+        
+        // AJAX handlers
+        add_action('wp_ajax_zippicks_update_cloudflare_ips', [$this, 'ajax_update_cloudflare_ips']);
     }
     
     /**
@@ -318,84 +321,6 @@ class Admin {
                 </div>
             </div>
         </div>
-        
-        <style>
-        .analytics-grid {
-            display: grid;
-            gap: 20px;
-            margin-top: 20px;
-        }
-        
-        .analytics-card {
-            background: #fff;
-            border: 1px solid #ccd0d4;
-            padding: 20px;
-            box-shadow: 0 1px 1px rgba(0,0,0,.04);
-        }
-        
-        .stat-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 20px;
-            margin-top: 15px;
-        }
-        
-        .stat-item {
-            text-align: center;
-        }
-        
-        .stat-value {
-            font-size: 32px;
-            font-weight: 600;
-            color: #23282d;
-        }
-        
-        .stat-label {
-            color: #666;
-            font-size: 14px;
-        }
-        
-        .analytics-table {
-            width: 100%;
-            margin-top: 15px;
-        }
-        
-        .analytics-table th,
-        .analytics-table td {
-            padding: 8px 12px;
-            text-align: left;
-        }
-        
-        .intent-distribution {
-            margin-top: 15px;
-        }
-        
-        .intent-bar {
-            margin-bottom: 15px;
-        }
-        
-        .intent-label {
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-        
-        .progress-bar {
-            background: #f0f0f1;
-            height: 25px;
-            border-radius: 3px;
-            overflow: hidden;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            display: flex;
-            align-items: center;
-            padding: 0 10px;
-            color: #fff;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        </style>
         <?php
     }
     
@@ -580,6 +505,44 @@ class Admin {
             'zippicks_search_settings',
             'zippicks_search_api'
         );
+        
+        // Cloudflare IP Management section
+        add_settings_section(
+            'zippicks_search_cloudflare',
+            __('Cloudflare IP Management', 'zippicks-smart-search'),
+            [$this, 'render_cloudflare_section'],
+            'zippicks_search_settings'
+        );
+        
+        // Register Cloudflare settings
+        register_setting('zippicks_search_settings', 'zippicks_trust_cloudflare');
+        register_setting('zippicks_search_settings', 'zippicks_trusted_proxies', [
+            'sanitize_callback' => [$this, 'sanitize_trusted_proxies']
+        ]);
+        
+        add_settings_field(
+            'trust_cloudflare',
+            __('Trust Cloudflare IPs', 'zippicks-smart-search'),
+            [$this, 'render_trust_cloudflare_field'],
+            'zippicks_search_settings',
+            'zippicks_search_cloudflare'
+        );
+        
+        add_settings_field(
+            'cloudflare_status',
+            __('Cloudflare IP Status', 'zippicks-smart-search'),
+            [$this, 'render_cloudflare_status_field'],
+            'zippicks_search_settings',
+            'zippicks_search_cloudflare'
+        );
+        
+        add_settings_field(
+            'trusted_proxies',
+            __('Additional Trusted Proxies', 'zippicks-smart-search'),
+            [$this, 'render_trusted_proxies_field'],
+            'zippicks_search_settings',
+            'zippicks_search_cloudflare'
+        );
     }
     
     /**
@@ -710,6 +673,15 @@ class Admin {
             return;
         }
         
+        // Enqueue admin CSS
+        wp_enqueue_style(
+            'zippicks-search-admin',
+            ZIPPICKS_SEARCH_PLUGIN_URL . 'assets/css/admin.css',
+            [],
+            ZIPPICKS_SEARCH_VERSION
+        );
+        
+        // Enqueue admin JavaScript
         wp_enqueue_script(
             'zippicks-search-admin',
             ZIPPICKS_SEARCH_PLUGIN_URL . 'assets/js/admin.js',
@@ -727,5 +699,175 @@ class Admin {
                 'error' => __('An error occurred', 'zippicks-smart-search')
             ]
         ]);
+    }
+    
+    /**
+     * Render Cloudflare section description
+     */
+    public function render_cloudflare_section() {
+        echo '<p>' . __('Configure trusted proxy settings for accurate IP detection and rate limiting.', 'zippicks-smart-search') . '</p>';
+    }
+    
+    /**
+     * Render trust Cloudflare field
+     */
+    public function render_trust_cloudflare_field() {
+        $value = get_option('zippicks_trust_cloudflare', false);
+        ?>
+        <label>
+            <input type="checkbox" name="zippicks_trust_cloudflare" value="1" <?php checked($value, true); ?> />
+            <?php _e('Automatically trust Cloudflare IP ranges', 'zippicks-smart-search'); ?>
+        </label>
+        <p class="description"><?php _e('When enabled, Cloudflare IP ranges are fetched daily and automatically trusted for X-Forwarded-For headers.', 'zippicks-smart-search'); ?></p>
+        <?php
+    }
+    
+    /**
+     * Render Cloudflare status field
+     */
+    public function render_cloudflare_status_field() {
+        $status = Cloudflare_IP_Manager::get_status();
+        ?>
+        <div class="cloudflare-ip-status">
+            <table class="widefat striped" style="max-width: 600px;">
+                <tbody>
+                    <tr>
+                        <th><?php _e('IP Ranges Cached', 'zippicks-smart-search'); ?></th>
+                        <td><?php echo esc_html($status['ip_count']); ?></td>
+                    </tr>
+                    <tr>
+                        <th><?php _e('Last Updated', 'zippicks-smart-search'); ?></th>
+                        <td><?php echo esc_html($status['last_updated_human']); ?></td>
+                    </tr>
+                    <tr>
+                        <th><?php _e('Cache Status', 'zippicks-smart-search'); ?></th>
+                        <td>
+                            <?php if ($status['cache_valid']): ?>
+                                <span class="dashicons dashicons-yes-alt" style="color: #46b450;"></span> <?php _e('Valid', 'zippicks-smart-search'); ?>
+                            <?php else: ?>
+                                <span class="dashicons dashicons-warning" style="color: #ffb900;"></span> <?php _e('Expired', 'zippicks-smart-search'); ?>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th><?php _e('Last Cron Run', 'zippicks-smart-search'); ?></th>
+                        <td><?php echo esc_html($status['last_cron_human']); ?></td>
+                    </tr>
+                    <tr>
+                        <th><?php _e('Next Scheduled Update', 'zippicks-smart-search'); ?></th>
+                        <td><?php echo esc_html($status['next_cron_human']); ?></td>
+                    </tr>
+                </tbody>
+            </table>
+            <p style="margin-top: 10px;">
+                <button type="button" class="button" id="force-cloudflare-update">
+                    <?php _e('Force Update Now', 'zippicks-smart-search'); ?>
+                </button>
+                <span class="spinner" style="float: none; margin-top: 0;"></span>
+            </p>
+        </div>
+        <script>
+        jQuery(document).ready(function($) {
+            $('#force-cloudflare-update').on('click', function() {
+                var button = $(this);
+                var spinner = button.siblings('.spinner');
+                
+                button.prop('disabled', true);
+                spinner.addClass('is-active');
+                
+                $.post(ajaxurl, {
+                    action: 'zippicks_update_cloudflare_ips',
+                    nonce: '<?php echo wp_create_nonce('zippicks_cloudflare_update'); ?>'
+                }, function(response) {
+                    if (response.success) {
+                        alert('<?php _e('Cloudflare IP ranges updated successfully!', 'zippicks-smart-search'); ?>');
+                        location.reload();
+                    } else {
+                        alert('<?php _e('Failed to update Cloudflare IP ranges. Check error logs.', 'zippicks-smart-search'); ?>');
+                    }
+                }).always(function() {
+                    button.prop('disabled', false);
+                    spinner.removeClass('is-active');
+                });
+            });
+        });
+        </script>
+        <?php
+    }
+    
+    /**
+     * Render trusted proxies field
+     */
+    public function render_trusted_proxies_field() {
+        $value = get_option('zippicks_trusted_proxies', []);
+        $proxies = is_array($value) ? implode("\n", $value) : '';
+        ?>
+        <textarea name="zippicks_trusted_proxies" rows="5" cols="50" class="large-text"><?php echo esc_textarea($proxies); ?></textarea>
+        <p class="description">
+            <?php _e('Enter additional trusted proxy IPs or CIDR ranges, one per line. Examples:', 'zippicks-smart-search'); ?><br>
+            <code>192.168.1.1</code><br>
+            <code>10.0.0.0/8</code><br>
+            <code>2001:db8::/32</code>
+        </p>
+        <?php
+    }
+    
+    /**
+     * Handle AJAX request to update Cloudflare IPs
+     */
+    public function ajax_update_cloudflare_ips() {
+        check_ajax_referer('zippicks_cloudflare_update', 'nonce');
+        
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+        
+        $result = Cloudflare_IP_Manager::force_update();
+        
+        if ($result) {
+            wp_send_json_success();
+        } else {
+            wp_send_json_error();
+        }
+    }
+    
+    /**
+     * Sanitize trusted proxies textarea input
+     * 
+     * @param string $value
+     * @return array
+     */
+    public function sanitize_trusted_proxies($value) {
+        if (!is_string($value)) {
+            return [];
+        }
+        
+        // Split by newlines and filter empty values
+        $proxies = array_filter(array_map('trim', explode("\n", $value)));
+        
+        // Validate each entry
+        $valid_proxies = [];
+        foreach ($proxies as $proxy) {
+            // Skip empty lines
+            if (empty($proxy)) {
+                continue;
+            }
+            
+            // Check if it's a valid IP or CIDR range
+            if (strpos($proxy, '/') !== false) {
+                // CIDR notation - basic validation
+                list($ip, $bits) = explode('/', $proxy, 2);
+                if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                    $valid_proxies[] = $proxy;
+                }
+            } else {
+                // Single IP
+                if (filter_var($proxy, FILTER_VALIDATE_IP)) {
+                    $valid_proxies[] = $proxy;
+                }
+            }
+        }
+        
+        return $valid_proxies;
     }
 }

@@ -99,6 +99,9 @@ final class Smart_Search {
         // Init action
         add_action('init', [$this, 'init']);
         
+        // Cloudflare IP update cron
+        add_action(Cloudflare_IP_Manager::CRON_HOOK, [Cloudflare_IP_Manager::class, 'update_ip_ranges']);
+        
         // REST API
         add_action('rest_api_init', [$this, 'register_rest_routes']);
         
@@ -363,6 +366,9 @@ final class Smart_Search {
             $zpid = get_post_meta($post->ID, 'zpid', true);
             
             if ($zpid) {
+                // Sanitize zpid to prevent XSS
+                $zpid = sanitize_text_field($zpid);
+                
                 $sample_url = get_permalink($post->ID);
                 // Replace the actual zpid with placeholder
                 $pattern = str_replace($zpid, '{zpid}', $sample_url);

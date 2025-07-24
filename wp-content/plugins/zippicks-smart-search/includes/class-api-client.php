@@ -73,6 +73,13 @@ class API_Client {
             $query_params['city'] = $params['city'] ?? '';
         }
         
+        // Keyword/Query search
+        if (!empty($params['query'])) {
+            $query_params['query'] = $params['query'];
+        } elseif (!empty($params['keyword'])) {
+            $query_params['query'] = $params['keyword'];
+        }
+        
         // Filters
         if (!empty($params['vibe'])) {
             $query_params['vibe'] = $params['vibe'];
