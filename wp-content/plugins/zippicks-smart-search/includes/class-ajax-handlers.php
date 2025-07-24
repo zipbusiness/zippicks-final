@@ -10,7 +10,10 @@
 
 namespace ZipPicks\SmartSearch;
 
+use ZipPicks\SmartSearch\Traits\LocationDetection;
+
 class Ajax_Handlers {
+    use LocationDetection;
     
     /**
      * Constructor
@@ -120,7 +123,13 @@ class Ajax_Handlers {
      * Handle autocomplete AJAX request
      */
     public function handle_autocomplete() {
-        // No nonce check for autocomplete (performance)
+        // Verify nonce for security
+        if (!check_ajax_referer('zippicks_search_nonce', 'nonce', false)) {
+            wp_send_json_error([
+                'message' => __('Security check failed', 'zippicks-smart-search'),
+                'code' => 'invalid_nonce'
+            ], 403);
+        }
         
         // Check rate limit
         $rate_limit = Rate_Limiter::check('autocomplete');
@@ -151,7 +160,7 @@ class Ajax_Handlers {
         }
         
         // Get suggestions from API
-        $api_client = new API_Client();
+        $api_client = API_Client::instance();
         $suggestions = $api_client->get_autocomplete($prefix, $location);
         
         if (is_wp_error($suggestions)) {
@@ -194,7 +203,7 @@ class Ajax_Handlers {
         }
         
         // Track click
-        $analytics = new Analytics();
+        $analytics = Analytics::instance();
         $result = $analytics->track_click($zpid, $query, $position);
         
         if (is_wp_error($result)) {
@@ -242,7 +251,7 @@ class Ajax_Handlers {
         }
         
         // Send to API
-        $api_client = new API_Client();
+        $api_client = API_Client::instance();
         $api_result = $api_client->track_coming_soon($zpid, $email);
         
         if (is_wp_error($api_result)) {
@@ -292,7 +301,7 @@ class Ajax_Handlers {
         }
         
         // Get analytics stats
-        $analytics = new Analytics();
+        $analytics = Analytics::instance();
         $stats = $analytics->get_stats();
         
         if (is_wp_error($stats)) {
@@ -309,52 +318,6 @@ class Ajax_Handlers {
         ]);
     }
     
-    /**
-     * Get location data
-     * 
-     * @param float|null $lat Latitude
-     * @param float|null $lng Longitude
-     * @return array
-     */
-    private function get_location($lat = null, $lng = null) {
-        // If coordinates provided, use them
-        if ($lat !== null && $lng !== null) {
-            return [
-                'lat' => $lat,
-                'lng' => $lng,
-                'source' => 'user_provided'
-            ];
-        }
-        
-        // Try to get from Geo Service plugin
-        if (class_exists('\\ZipPicks\\Geo\\Location_Detector')) {
-            try {
-                $detector = new \ZipPicks\Geo\Location_Detector();
-                $location = $detector->get_user_location(get_current_user_id());
-                
-                if ($location && isset($location['latitude']) && isset($location['longitude'])) {
-                    return [
-                        'lat' => floatval($location['latitude']),
-                        'lng' => floatval($location['longitude']),
-                        'city' => $location['city'] ?? null,
-                        'state' => $location['state'] ?? null,
-                        'source' => $location['source'] ?? 'geo_service'
-                    ];
-                }
-            } catch (\Exception $e) {
-                error_log('Geo Service error: ' . $e->getMessage());
-            }
-        }
-        
-        // Fallback to default location
-        return [
-            'lat' => 34.0522,
-            'lng' => -118.2437,
-            'city' => 'Los Angeles',
-            'state' => 'CA',
-            'source' => 'default'
-        ];
-    }
     
     /**
      * Process autocomplete suggestions
@@ -412,7 +375,7 @@ class Ajax_Handlers {
      */
     private function track_search($query, $location, $results) {
         try {
-            $analytics = new Analytics();
+            $analytics = Analytics::instance();
             $analytics->track_search([
                 'query' => $query,
                 'location' => $location,

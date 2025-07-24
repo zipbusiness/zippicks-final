@@ -208,50 +208,237 @@
                     break;
             }
             
+            // Use ZipPicksSecurity helper to create DOM elements safely
+            if (window.ZipPicksSecurity) {
+                const iconSpan = ZipPicksSecurity.createElement('span', {
+                    'class': 'intent-icon'
+                });
+                
+                const messageSpan = ZipPicksSecurity.createElement('span', {
+                    'class': 'intent-message'
+                }, message);
+                
+                const container = ZipPicksSecurity.createElement('div', {
+                    'class': `zippicks-intent-indicator intent-${ZipPicksSecurity.escapeAttr(intent)}`
+                });
+                
+                container.appendChild(iconSpan);
+                container.appendChild(messageSpan);
+                
+                return container.outerHTML;
+            }
+            
+            // Fallback with manual sanitization if ZipPicksSecurity is not available
+            const sanitizedIntent = this.sanitizeForClass(intent);
+            const sanitizedMessage = this.escapeHtml(message);
+            
             return `
-                <div class="zippicks-intent-indicator intent-${intent}">
+                <div class="zippicks-intent-indicator intent-${sanitizedIntent}">
                     <span class="intent-icon"></span>
-                    <span class="intent-message">${message}</span>
+                    <span class="intent-message">${sanitizedMessage}</span>
                 </div>
             `;
+        },
+        
+        // Sanitize string for use in CSS class names
+        sanitizeForClass: function(str) {
+            if (typeof str !== 'string') {
+                return '';
+            }
+            // Only allow alphanumeric, hyphens, and underscores
+            return str.replace(/[^a-zA-Z0-9\-_]/g, '');
+        },
+        
+        // Escape HTML entities
+        escapeHtml: function(str) {
+            if (typeof str !== 'string') {
+                return '';
+            }
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            };
+            return str.replace(/[&<>"']/g, function(char) {
+                return map[char];
+            });
         },
         
         // Render single result
         renderResult: function(result, position) {
             const isComingSoon = !result.exists;
-            const resultClass = isComingSoon ? 'coming-soon' : '';
             
-            return `
-                <div class="zippicks-search-result ${resultClass}" 
-                     data-zpid="${result.zpid}" 
-                     data-position="${position}">
-                    <div class="result-content">
-                        <h3 class="result-title">
-                            ${isComingSoon ? 
-                                result.name : 
-                                `<a href="${result.url}">${result.name}</a>`
-                            }
-                        </h3>
-                        <div class="result-meta">
-                            ${result.category ? `<span class="result-category">${result.category}</span>` : ''}
-                            ${result.distance ? `<span class="result-distance">${result.distance} mi</span>` : ''}
-                        </div>
-                        ${result.description ? `<p class="result-description">${result.description}</p>` : ''}
-                        ${result.vibes && result.vibes.length ? 
-                            `<div class="result-vibes">
-                                ${result.vibes.map(vibe => `<span class="vibe-tag">${vibe}</span>`).join('')}
-                            </div>` : ''
-                        }
-                    </div>
-                    ${isComingSoon ? 
-                        `<div class="result-action">
-                            <button class="zippicks-notify-btn button" data-zpid="${result.zpid}" data-name="${result.name}">
-                                ${zippicks_search.strings.notify_me}
-                            </button>
-                        </div>` : ''
+            // Use ZipPicksSecurity helper if available, otherwise use fallback
+            const security = window.ZipPicksSecurity || this;
+            
+            // Create main result container
+            const resultContainer = this.createSafeElement('div', {
+                'class': `zippicks-search-result ${isComingSoon ? 'coming-soon' : ''}`,
+                'data-zpid': result.zpid,
+                'data-position': position
+            });
+            
+            // Create result content container
+            const contentContainer = this.createSafeElement('div', {
+                'class': 'result-content'
+            });
+            
+            // Create title element
+            const titleElement = this.createSafeElement('h3', {
+                'class': 'result-title'
+            });
+            
+            if (isComingSoon) {
+                // Just text for coming soon items
+                titleElement.textContent = result.name || '';
+            } else {
+                // Create link for existing businesses
+                const linkElement = this.createSafeElement('a', {
+                    'href': this.sanitizeUrl(result.url)
+                });
+                linkElement.textContent = result.name || '';
+                titleElement.appendChild(linkElement);
+            }
+            contentContainer.appendChild(titleElement);
+            
+            // Create meta information
+            if (result.category || result.distance) {
+                const metaContainer = this.createSafeElement('div', {
+                    'class': 'result-meta'
+                });
+                
+                if (result.category) {
+                    const categorySpan = this.createSafeElement('span', {
+                        'class': 'result-category'
+                    });
+                    categorySpan.textContent = result.category;
+                    metaContainer.appendChild(categorySpan);
+                }
+                
+                if (result.distance) {
+                    const distanceSpan = this.createSafeElement('span', {
+                        'class': 'result-distance'
+                    });
+                    distanceSpan.textContent = `${result.distance} mi`;
+                    metaContainer.appendChild(distanceSpan);
+                }
+                
+                contentContainer.appendChild(metaContainer);
+            }
+            
+            // Add description if available
+            if (result.description) {
+                const descriptionP = this.createSafeElement('p', {
+                    'class': 'result-description'
+                });
+                descriptionP.textContent = result.description;
+                contentContainer.appendChild(descriptionP);
+            }
+            
+            // Add vibes if available
+            if (result.vibes && Array.isArray(result.vibes) && result.vibes.length > 0) {
+                const vibesContainer = this.createSafeElement('div', {
+                    'class': 'result-vibes'
+                });
+                
+                result.vibes.forEach(vibe => {
+                    if (vibe && typeof vibe === 'string') {
+                        const vibeSpan = this.createSafeElement('span', {
+                            'class': 'vibe-tag'
+                        });
+                        vibeSpan.textContent = vibe;
+                        vibesContainer.appendChild(vibeSpan);
                     }
-                </div>
-            `;
+                });
+                
+                contentContainer.appendChild(vibesContainer);
+            }
+            
+            resultContainer.appendChild(contentContainer);
+            
+            // Add notify button for coming soon items
+            if (isComingSoon) {
+                const actionContainer = this.createSafeElement('div', {
+                    'class': 'result-action'
+                });
+                
+                const notifyButton = this.createSafeElement('button', {
+                    'class': 'zippicks-notify-btn button',
+                    'data-zpid': result.zpid,
+                    'data-name': result.name
+                });
+                notifyButton.textContent = zippicks_search.strings.notify_me || 'Notify Me';
+                
+                actionContainer.appendChild(notifyButton);
+                resultContainer.appendChild(actionContainer);
+            }
+            
+            return resultContainer.outerHTML;
+        },
+        
+        // Create safe DOM element with sanitized attributes
+        createSafeElement: function(tag, attrs = {}) {
+            // Use ZipPicksSecurity if available
+            if (window.ZipPicksSecurity && window.ZipPicksSecurity.createElement) {
+                return window.ZipPicksSecurity.createElement(tag, attrs);
+            }
+            
+            // Fallback: manual safe element creation
+            const element = document.createElement(tag);
+            
+            for (const [key, value] of Object.entries(attrs)) {
+                if (typeof value === 'string' || typeof value === 'number') {
+                    if (key === 'href') {
+                        element.setAttribute(key, this.sanitizeUrl(String(value)));
+                    } else if (key === 'class' || key === 'id' || key.startsWith('data-')) {
+                        element.setAttribute(key, this.sanitizeAttr(String(value)));
+                    }
+                }
+            }
+            
+            return element;
+        },
+        
+        // Sanitize URL (enhanced version)
+        sanitizeUrl: function(url) {
+            if (!url || typeof url !== 'string') {
+                return '#';
+            }
+            
+            // Use ZipPicksSecurity if available
+            if (window.ZipPicksSecurity && window.ZipPicksSecurity.sanitizeUrl) {
+                return window.ZipPicksSecurity.sanitizeUrl(url);
+            }
+            
+            // Fallback: basic URL sanitization
+            if (url.match(/^(javascript|data|vbscript):/i)) {
+                return '#';
+            }
+            
+            if (!url.match(/^(https?:\/\/|\/|#)/i)) {
+                return '#';
+            }
+            
+            return url;
+        },
+        
+        // Sanitize attribute value
+        sanitizeAttr: function(attr) {
+            if (typeof attr !== 'string') {
+                return '';
+            }
+            
+            // Use ZipPicksSecurity if available
+            if (window.ZipPicksSecurity && window.ZipPicksSecurity.escapeAttr) {
+                return window.ZipPicksSecurity.escapeAttr(attr);
+            }
+            
+            // Fallback: escape dangerous characters
+            return attr.replace(/["'<>&]/g, function(char) {
+                return '&#' + char.charCodeAt(0) + ';';
+            });
         },
         
         // Handle result click
@@ -273,18 +460,12 @@
             const zpid = $btn.data('zpid');
             const name = $btn.data('name');
             
-            // Show email input
-            const email = prompt(`Enter your email to be notified when ${name} is added:`, '');
-            
-            if (email && this.validateEmail(email)) {
-                this.submitNotification(zpid, email, $btn);
-            }
+            // Show inline email form
+            this.showEmailForm($btn, zpid, name);
         },
         
         // Submit notification request
-        submitNotification: function(zpid, email, $btn) {
-            $btn.prop('disabled', true).text('Submitting...');
-            
+        submitNotification: function(zpid, email, $btn, $formContainer) {
             const data = {
                 action: 'zippicks_notify_coming_soon',
                 nonce: zippicks_search.nonce,
@@ -295,15 +476,37 @@
             $.post(zippicks_search.ajax_url, data)
                 .done(response => {
                     if (response.success) {
-                        $btn.text('Notification Set!').addClass('success');
+                        // Hide form and show success on button
+                        if ($formContainer) {
+                            this.hideEmailForm();
+                        }
+                        $btn.text('Notification Set!').addClass('success').prop('disabled', true);
                     } else {
-                        alert(response.data.message || 'Failed to set notification');
-                        $btn.prop('disabled', false).text(zippicks_search.strings.notify_me);
+                        // Show error in form if available, otherwise alert
+                        const errorMsg = response.data.message || 'Failed to set notification';
+                        if ($formContainer) {
+                            const $errorDiv = $formContainer.find('.email-error-message');
+                            const $submitBtn = $formContainer.find('.email-submit-btn');
+                            $errorDiv.text(errorMsg).show();
+                            $submitBtn.prop('disabled', false).text('Notify Me');
+                        } else {
+                            alert(errorMsg);
+                            $btn.prop('disabled', false).text(zippicks_search.strings.notify_me);
+                        }
                     }
                 })
                 .fail(() => {
-                    alert('Failed to set notification. Please try again.');
-                    $btn.prop('disabled', false).text(zippicks_search.strings.notify_me);
+                    // Show error in form if available, otherwise alert
+                    const errorMsg = 'Failed to set notification. Please try again.';
+                    if ($formContainer) {
+                        const $errorDiv = $formContainer.find('.email-error-message');
+                        const $submitBtn = $formContainer.find('.email-submit-btn');
+                        $errorDiv.text(errorMsg).show();
+                        $submitBtn.prop('disabled', false).text('Notify Me');
+                    } else {
+                        alert(errorMsg);
+                        $btn.prop('disabled', false).text(zippicks_search.strings.notify_me);
+                    }
                 });
         },
         
@@ -371,32 +574,38 @@
         // Show loading state
         showLoading: function() {
             const $container = $('.zippicks-search-results');
-            $container.html(`
-                <div class="zippicks-loading">
-                    <span class="spinner"></span>
-                    <span>${zippicks_search.strings.searching}</span>
-                </div>
-            `).show();
+            
+            // Create loading container safely
+            const $loadingDiv = $('<div>', { class: 'zippicks-loading' });
+            const $spinner = $('<span>', { class: 'spinner' });
+            const $message = $('<span>').text(zippicks_search.strings.searching || 'Searching...');
+            
+            $loadingDiv.append($spinner, $message);
+            $container.empty().append($loadingDiv).show();
         },
         
         // Show no results
         showNoResults: function() {
             const $container = $('.zippicks-search-results');
-            $container.html(`
-                <div class="zippicks-no-results">
-                    <p>${zippicks_search.strings.no_results}</p>
-                </div>
-            `).show();
+            
+            // Create no results container safely
+            const $noResultsDiv = $('<div>', { class: 'zippicks-no-results' });
+            const $message = $('<p>').text(zippicks_search.strings.no_results || 'No results found');
+            
+            $noResultsDiv.append($message);
+            $container.empty().append($noResultsDiv).show();
         },
         
         // Show error
         showError: function(message) {
             const $container = $('.zippicks-search-results');
-            $container.html(`
-                <div class="zippicks-search-error">
-                    <p>${message}</p>
-                </div>
-            `).show();
+            
+            // Create error container safely
+            const $errorDiv = $('<div>', { class: 'zippicks-search-error' });
+            const $errorMessage = $('<p>').text(message || 'An error occurred');
+            
+            $errorDiv.append($errorMessage);
+            $container.empty().append($errorDiv).show();
         },
         
         // Clear results
@@ -404,8 +613,153 @@
             $('.zippicks-search-results').empty().hide();
         },
         
-        // Validate email
+        // Show inline email form
+        showEmailForm: function($btn, zpid, name) {
+            // Remove any existing email forms
+            this.hideEmailForm();
+            
+            // Disable the notify button temporarily
+            $btn.prop('disabled', true);
+            
+            // Create form container
+            const $formContainer = $('<div>', {
+                class: 'zippicks-email-form-container',
+                'data-zpid': zpid
+            });
+            
+            // Create form using safe DOM construction
+            const $form = $('<div>', { class: 'zippicks-email-form' });
+            
+            // Header
+            const $header = $('<div>', { class: 'email-form-header' });
+            const $title = $('<span>', { class: 'email-form-title' })
+                .text(`Get notified when ${name} is added`);
+            $header.append($title);
+            
+            // Body
+            const $body = $('<div>', { class: 'email-form-body' });
+            const $input = $('<input>', {
+                type: 'email',
+                class: 'email-input',
+                placeholder: 'Enter your email address',
+                maxlength: '254',
+                required: true
+            });
+            const $errorMsg = $('<div>', { 
+                class: 'email-error-message',
+                style: 'display: none;'
+            });
+            $body.append($input, $errorMsg);
+            
+            // Actions
+            const $actions = $('<div>', { class: 'email-form-actions' });
+            const $submitBtn = $('<button>', {
+                type: 'button',
+                class: 'email-submit-btn'
+            }).text('Notify Me');
+            const $cancelBtn = $('<button>', {
+                type: 'button',
+                class: 'email-cancel-btn'
+            }).text('Cancel');
+            $actions.append($submitBtn, $cancelBtn);
+            
+            // Assemble form
+            $form.append($header, $body, $actions);
+            $formContainer.append($form);
+            
+            // Insert form after the notify button
+            $btn.after($formContainer);
+            
+            // Add event handlers
+            this.attachEmailFormHandlers($formContainer, $btn, zpid);
+            
+            // Focus on email input
+            $formContainer.find('.email-input').focus();
+        },
+        
+        // Attach email form event handlers
+        attachEmailFormHandlers: function($formContainer, $btn, zpid) {
+            const self = this;
+            const $emailInput = $formContainer.find('.email-input');
+            const $submitBtn = $formContainer.find('.email-submit-btn');
+            const $cancelBtn = $formContainer.find('.email-cancel-btn');
+            const $errorMsg = $formContainer.find('.email-error-message');
+            
+            // Submit button handler
+            $submitBtn.on('click', function(e) {
+                e.preventDefault();
+                self.handleEmailSubmit($formContainer, $btn, zpid);
+            });
+            
+            // Cancel button handler
+            $cancelBtn.on('click', function(e) {
+                e.preventDefault();
+                self.hideEmailForm();
+                $btn.prop('disabled', false);
+            });
+            
+            // Enter key handler on input
+            $emailInput.on('keypress', function(e) {
+                if (e.which === 13) { // Enter key
+                    e.preventDefault();
+                    self.handleEmailSubmit($formContainer, $btn, zpid);
+                }
+            });
+            
+            // Escape key handler
+            $formContainer.on('keydown', function(e) {
+                if (e.which === 27) { // Escape key
+                    e.preventDefault();
+                    self.hideEmailForm();
+                    $btn.prop('disabled', false);
+                }
+            });
+            
+            // Real-time validation
+            $emailInput.on('input', function() {
+                $errorMsg.hide();
+                $submitBtn.prop('disabled', false);
+            });
+        },
+        
+        // Handle email form submission
+        handleEmailSubmit: function($formContainer, $btn, zpid) {
+            const $emailInput = $formContainer.find('.email-input');
+            const $submitBtn = $formContainer.find('.email-submit-btn');
+            const $errorMsg = $formContainer.find('.email-error-message');
+            const email = $emailInput.val().trim();
+            
+            // Validate email using security helper
+            const security = window.ZipPicksSecurity || this;
+            const validation = security.validateEmail(email);
+            
+            if (!validation.valid) {
+                $errorMsg.text(validation.error).show();
+                $emailInput.focus();
+                return;
+            }
+            
+            // Disable submit button and show loading
+            $submitBtn.prop('disabled', true).text('Submitting...');
+            
+            // Submit the notification
+            this.submitNotification(zpid, validation.email, $btn, $formContainer);
+        },
+        
+        // Hide email form
+        hideEmailForm: function() {
+            $('.zippicks-email-form-container').remove();
+        },
+        
+        // Validate email (updated to use security helper)
         validateEmail: function(email) {
+            const security = window.ZipPicksSecurity || this;
+            if (security.validateEmail) {
+                const validation = security.validateEmail(email);
+                return validation.valid;
+            }
+            
+            // Fallback to basic validation
             const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             return re.test(email);
         }

@@ -6,6 +6,52 @@
 window.ZipPicksSecurity = {
     
     /**
+     * Get CSP nonce from localized data
+     * 
+     * @return {string|null} CSP nonce or null if not available
+     */
+    getCspNonce: function() {
+        if (typeof zippicks_search !== 'undefined' && 
+            zippicks_search.security && 
+            zippicks_search.security.csp_nonce) {
+            return zippicks_search.security.csp_nonce;
+        }
+        return null;
+    },
+    
+    /**
+     * Create script element with CSP nonce
+     * 
+     * @param {string} content Script content
+     * @return {HTMLScriptElement} Script element with nonce
+     */
+    createScriptElement: function(content) {
+        const script = document.createElement('script');
+        const nonce = this.getCspNonce();
+        if (nonce) {
+            script.setAttribute('nonce', nonce);
+        }
+        script.textContent = content;
+        return script;
+    },
+    
+    /**
+     * Create style element with CSP nonce
+     * 
+     * @param {string} content Style content
+     * @return {HTMLStyleElement} Style element with nonce
+     */
+    createStyleElement: function(content) {
+        const style = document.createElement('style');
+        const nonce = this.getCspNonce();
+        if (nonce) {
+            style.setAttribute('nonce', nonce);
+        }
+        style.textContent = content;
+        return style;
+    },
+    
+    /**
      * Escape HTML entities
      * 
      * @param {string} str String to escape
@@ -21,17 +67,16 @@ window.ZipPicksSecurity = {
             '<': '&lt;',
             '>': '&gt;',
             '"': '&quot;',
-            "'": '&#39;',
-            '/': '&#x2F;'
+            "'": '&#39;'
         };
         
-        return str.replace(/[&<>"'\/]/g, function(char) {
+        return str.replace(/[&<>"']/g, function(char) {
             return map[char];
         });
     },
     
     /**
-     * Escape HTML attribute
+     * Escape HTML attribute with comprehensive character set
      * 
      * @param {string} attr Attribute value to escape
      * @return {string} Escaped attribute
@@ -41,29 +86,82 @@ window.ZipPicksSecurity = {
             return '';
         }
         
-        return attr.replace(/["'<>&]/g, function(char) {
+        // Comprehensive set of characters that can be problematic in HTML attributes
+        // Including: quotes, angle brackets, ampersand, equals, backticks, 
+        // control characters, and other special characters
+        return attr.replace(/["'<>&=`\x00-\x1F\x7F-\x9F]/g, function(char) {
             return '&#' + char.charCodeAt(0) + ';';
         });
     },
     
     /**
-     * Sanitize URL
+     * Sanitize URL with comprehensive security checks
      * 
      * @param {string} url URL to sanitize
-     * @return {string} Sanitized URL
+     * @return {string} Sanitized URL or '#' for unsafe URLs
      */
     sanitizeUrl: function(url) {
         if (typeof url !== 'string') {
             return '#';
         }
         
-        // Remove javascript: and data: protocols
-        if (url.match(/^(javascript|data):/i)) {
+        // Trim whitespace
+        url = url.trim();
+        
+        // Decode URL to catch encoded malicious protocols
+        // Decode multiple times to handle double/triple encoding
+        let decodedUrl = url;
+        let previousUrl = '';
+        let decodeCount = 0;
+        
+        while (decodedUrl !== previousUrl && decodeCount < 3) {
+            previousUrl = decodedUrl;
+            try {
+                decodedUrl = decodeURIComponent(decodedUrl);
+            } catch (e) {
+                // If decoding fails, work with what we have
+                break;
+            }
+            decodeCount++;
+        }
+        
+        // Check decoded URL for dangerous protocols
+        // Expanded list includes vbscript, file, and other dangerous schemes
+        const dangerousProtocols = /^(javascript|data|vbscript|file|about|chrome|ms-cxh|ms-cxh-full|ms-word):/i;
+        if (dangerousProtocols.test(decodedUrl)) {
             return '#';
         }
         
-        // Ensure protocol is http(s) or relative
-        if (!url.match(/^(https?:\/\/|\/|#)/i)) {
+        // Handle protocol-relative URLs (//)
+        if (url.startsWith('//')) {
+            // Only allow protocol-relative URLs for known safe domains
+            // In production, you might want to check against a whitelist
+            // For now, we'll allow them but you can add domain validation here
+            return url;
+        }
+        
+        // Handle query-only URLs (?)
+        if (url.startsWith('?')) {
+            // Query-only URLs are safe as they're relative to current page
+            return url;
+        }
+        
+        // Handle fragment-only URLs (#)
+        if (url.startsWith('#')) {
+            return url;
+        }
+        
+        // Check for valid URL patterns
+        // Allow: http(s)://, /, relative paths
+        const validUrlPattern = /^(https?:\/\/|\/(?!\/)|\.{0,2}\/|[a-zA-Z0-9])/i;
+        if (!validUrlPattern.test(url)) {
+            return '#';
+        }
+        
+        // Additional check for sneaky protocol injections after URL manipulation
+        // Check for colon that might indicate a protocol after the start
+        const suspiciousColon = /^[^:/?#]+:[^/?#]/;
+        if (suspiciousColon.test(url) && !url.match(/^https?:/i)) {
             return '#';
         }
         
@@ -128,39 +226,191 @@ window.ZipPicksSecurity = {
     },
     
     /**
-     * Parse and sanitize HTML string with allowed tags
+     * Parse and sanitize HTML string with allowed tags using DOMParser
      * 
      * @param {string} html HTML string
      * @param {array} allowedTags Allowed HTML tags
+     * @param {array} allowedAttributes Allowed attributes (optional)
      * @return {string} Sanitized HTML
      */
-    sanitizeHtml: function(html, allowedTags = ['strong', 'em', 'span']) {
+    sanitizeHtml: function(html, allowedTags = ['strong', 'em', 'span'], allowedAttributes = []) {
         if (typeof html !== 'string') {
             return '';
         }
         
-        // Create temporary container
-        const temp = document.createElement('div');
-        temp.textContent = html;
+        // Use DOMParser for safe parsing
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
         
-        // Replace allowed tags
-        allowedTags.forEach(tag => {
-            const regex = new RegExp(`&lt;(\/?)${tag}&gt;`, 'gi');
-            temp.innerHTML = temp.innerHTML.replace(regex, `<$1${tag}>`);
-        });
+        // Store reference to this for use in nested function
+        const self = this;
         
-        return temp.innerHTML;
+        // Define dangerous attributes that should always be removed
+        const dangerousAttributes = [
+            'onclick', 'onload', 'onerror', 'onmouseover', 'onfocus', 'onblur',
+            'onchange', 'onsubmit', 'onkeydown', 'onkeyup', 'onkeypress',
+            'ondblclick', 'onmousedown', 'onmouseup', 'onmousemove', 'onmouseout',
+            'oncontextmenu', 'ondrag', 'ondrop', 'oncopy', 'oncut', 'onpaste',
+            'oninput', 'oninvalid', 'onreset', 'onscroll', 'onsearch', 'onselect',
+            'ontouchstart', 'ontouchend', 'ontouchmove', 'ontouchcancel'
+        ];
+        
+        // Recursive function to sanitize nodes
+        const sanitizeNode = (node) => {
+            // Handle text nodes - always safe
+            if (node.nodeType === Node.TEXT_NODE) {
+                return document.createTextNode(node.textContent);
+            }
+            
+            // Handle element nodes
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                const tagName = node.tagName.toLowerCase();
+                
+                // Check if tag is allowed
+                if (!allowedTags.includes(tagName)) {
+                    // Replace disallowed tag with its children
+                    const fragment = document.createDocumentFragment();
+                    for (let child of node.childNodes) {
+                        const sanitizedChild = sanitizeNode(child);
+                        if (sanitizedChild) {
+                            fragment.appendChild(sanitizedChild);
+                        }
+                    }
+                    return fragment;
+                }
+                
+                // Create new clean element
+                const cleanElement = document.createElement(tagName);
+                
+                // Process attributes
+                for (let i = node.attributes.length - 1; i >= 0; i--) {
+                    const attr = node.attributes[i];
+                    const attrName = attr.name.toLowerCase();
+                    
+                    // Skip dangerous attributes
+                    if (dangerousAttributes.includes(attrName)) {
+                        continue;
+                    }
+                    
+                    // Skip attributes starting with 'on' (catch-all for event handlers)
+                    if (attrName.startsWith('on')) {
+                        continue;
+                    }
+                    
+                    // Skip href/src unless explicitly allowed
+                    if ((attrName === 'href' || attrName === 'src') && !allowedAttributes.includes(attrName)) {
+                        continue;
+                    }
+                    
+                    // Check if attribute is in allowed list (if list is provided)
+                    if (allowedAttributes.length > 0 && !allowedAttributes.includes(attrName)) {
+                        continue;
+                    }
+                    
+                    // Sanitize attribute value
+                    let attrValue = attr.value;
+                    
+                    // Special handling for href/src
+                    if (attrName === 'href' || attrName === 'src') {
+                        attrValue = self.sanitizeUrl(attrValue);
+                    }
+                    
+                    // Set the sanitized attribute
+                    cleanElement.setAttribute(attrName, attrValue);
+                }
+                
+                // Process child nodes
+                for (let child of node.childNodes) {
+                    const sanitizedChild = sanitizeNode(child);
+                    if (sanitizedChild) {
+                        cleanElement.appendChild(sanitizedChild);
+                    }
+                }
+                
+                return cleanElement;
+            }
+            
+            // Ignore other node types (comments, etc.)
+            return null;
+        };
+        
+        // Create container for sanitized content
+        const container = document.createElement('div');
+        
+        // Sanitize all child nodes of the body
+        for (let child of doc.body.childNodes) {
+            const sanitizedChild = sanitizeNode(child);
+            if (sanitizedChild) {
+                container.appendChild(sanitizedChild);
+            }
+        }
+        
+        // Return the sanitized HTML
+        return container.innerHTML;
     },
     
     /**
-     * Validate email address
+     * Validate email address with enterprise-grade validation
      * 
      * @param {string} email Email to validate
-     * @return {boolean} Is valid
+     * @return {object} Validation result with detailed feedback
      */
     validateEmail: function(email) {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test(email);
+        // Type and basic checks
+        if (typeof email !== 'string') {
+            return { valid: false, error: 'Email must be a string' };
+        }
+        
+        const trimmedEmail = email.trim();
+        
+        // Length checks
+        if (trimmedEmail.length === 0) {
+            return { valid: false, error: 'Email is required' };
+        }
+        
+        if (trimmedEmail.length > 254) {
+            return { valid: false, error: 'Email is too long (max 254 characters)' };
+        }
+        
+        // Basic format validation (RFC 5322 simplified)
+        const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+        
+        if (!emailRegex.test(trimmedEmail)) {
+            return { valid: false, error: 'Invalid email format' };
+        }
+        
+        // Check for security threats
+        const dangerous = /<script|javascript:|on\w+\s*=|<iframe|<object|<embed/i;
+        if (dangerous.test(trimmedEmail)) {
+            return { valid: false, error: 'Email contains invalid characters' };
+        }
+        
+        // Split local and domain parts
+        const [localPart, domainPart] = trimmedEmail.split('@');
+        
+        // Local part validation
+        if (localPart.length > 64) {
+            return { valid: false, error: 'Email local part is too long (max 64 characters)' };
+        }
+        
+        // Domain part validation
+        if (domainPart.length > 253) {
+            return { valid: false, error: 'Email domain is too long (max 253 characters)' };
+        }
+        
+        // Check for valid TLD (at least 2 characters)
+        const domainParts = domainPart.split('.');
+        const tld = domainParts[domainParts.length - 1];
+        if (tld.length < 2) {
+            return { valid: false, error: 'Invalid domain extension' };
+        }
+        
+        return { 
+            valid: true, 
+            email: trimmedEmail,
+            localPart: localPart,
+            domainPart: domainPart
+        };
     },
     
     /**

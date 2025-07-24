@@ -33,6 +33,9 @@ class Installer {
      * Plugin deactivation
      */
     public static function deactivate() {
+        // Remove capabilities
+        self::remove_capabilities();
+        
         // Clear scheduled events if any
         wp_clear_scheduled_hook('zippicks_search_cache_cleanup');
         
@@ -81,6 +84,25 @@ class Installer {
         $editor = get_role('editor');
         if ($editor) {
             $editor->add_cap('view_search_analytics');
+        }
+    }
+    
+    /**
+     * Remove capabilities
+     */
+    private static function remove_capabilities() {
+        // Remove from administrator role
+        $role = get_role('administrator');
+        
+        if ($role) {
+            $role->remove_cap('manage_zippicks_search');
+            $role->remove_cap('view_search_analytics');
+        }
+        
+        // Remove from editor role
+        $editor = get_role('editor');
+        if ($editor) {
+            $editor->remove_cap('view_search_analytics');
         }
     }
 }

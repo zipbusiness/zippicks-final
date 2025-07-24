@@ -9,7 +9,10 @@
 
 namespace ZipPicks\SmartSearch;
 
+use ZipPicks\SmartSearch\Traits\LocationDetection;
+
 class REST_Controller {
+    use LocationDetection;
     
     /**
      * Namespace for REST routes
@@ -30,7 +33,7 @@ class REST_Controller {
         ]);
         
         // Coming soon notification endpoint
-        register_rest_route(self::NAMESPACE, '/search/notify/(?P<zpid>[a-zA-Z0-9-]+)', [
+        register_rest_route(self::NAMESPACE, '/search/notify/(?P<zpid>[a-zA-Z0-9-]{1,50})', [
             'methods' => 'POST',
             'callback' => [$this, 'notify_coming_soon'],
             'permission_callback' => '__return_true',
@@ -38,8 +41,9 @@ class REST_Controller {
                 'zpid' => [
                     'required' => true,
                     'validate_callback' => function($param) {
-                        return is_string($param) && !empty($param);
-                    }
+                        return is_string($param) && !empty($param) && strlen($param) <= 50;
+                    },
+                    'sanitize_callback' => 'sanitize_text_field'
                 ],
                 'email' => [
                     'required' => true,
@@ -73,6 +77,24 @@ class REST_Controller {
                     'validate_callback' => function($param) {
                         return is_numeric($param) && $param >= -180 && $param <= 180;
                     }
+                ],
+                'loc' => [
+                    'required' => false,
+                    'validate_callback' => function($param) {
+                        if (!is_string($param) || empty($param)) {
+                            return false;
+                        }
+                        $parts = explode(',', $param);
+                        if (count($parts) !== 2) {
+                            return false;
+                        }
+                        $lat = trim($parts[0]);
+                        $lng = trim($parts[1]);
+                        return is_numeric($lat) && is_numeric($lng) 
+                            && $lat >= -90 && $lat <= 90 
+                            && $lng >= -180 && $lng <= 180;
+                    },
+                    'sanitize_callback' => 'sanitize_text_field'
                 ]
             ]
         ]);
@@ -86,8 +108,9 @@ class REST_Controller {
                 'zpid' => [
                     'required' => true,
                     'validate_callback' => function($param) {
-                        return is_string($param) && !empty($param);
-                    }
+                        return is_string($param) && !empty($param) && strlen($param) <= 50;
+                    },
+                    'sanitize_callback' => 'sanitize_text_field'
                 ],
                 'query' => [
                     'required' => true,
@@ -103,6 +126,31 @@ class REST_Controller {
                 ]
             ]
         ]);
+        
+        // API Proxy endpoint (for secure API calls)
+        if (get_option('zippicks_search_use_proxy', false)) {
+            register_rest_route(self::NAMESPACE, '/proxy/search', [
+                'methods' => 'POST',
+                'callback' => [$this, 'proxy_search'],
+                'permission_callback' => '__return_true',
+                'args' => [
+                    'endpoint' => [
+                        'required' => true,
+                        'validate_callback' => function($param) {
+                            // Only allow specific endpoints
+                            $allowed = ['search', 'restaurants/search', 'restaurants/details'];
+                            return in_array($param, $allowed);
+                        }
+                    ],
+                    'params' => [
+                        'required' => true,
+                        'validate_callback' => function($param) {
+                            return is_array($param);
+                        }
+                    ]
+                ]
+            ]);
+        }
     }
     
     /**
@@ -203,8 +251,30 @@ class REST_Controller {
         }
         
         $prefix = sanitize_text_field($request->get_param('q'));
-        $lat = $request->get_param('lat');
-        $lng = $request->get_param('lng');
+        
+        // Handle location parameters - support both 'loc' and separate lat/lng
+        $loc = $request->get_param('loc');
+        $lat = null;
+        $lng = null;
+        
+        if ($loc) {
+            // Parse loc parameter (format: "lat,lng")
+            $parts = explode(',', $loc);
+            if (count($parts) === 2) {
+                $lat = floatval(trim($parts[0]));
+                $lng = floatval(trim($parts[1]));
+            } else {
+                return new \WP_Error(
+                    'invalid_location_format',
+                    __('Location parameter must be in format "latitude,longitude"', 'zippicks-smart-search'),
+                    ['status' => 400]
+                );
+            }
+        } else {
+            // Fall back to separate lat/lng parameters
+            $lat = $request->get_param('lat');
+            $lng = $request->get_param('lng');
+        }
         
         // Get location
         $location = $this->get_location($lat, $lng);
@@ -224,7 +294,7 @@ class REST_Controller {
         }
         
         // Get suggestions from API
-        $api_client = new API_Client();
+        $api_client = API_Client::instance();
         $suggestions = $api_client->get_autocomplete($prefix, $location);
         
         if (is_wp_error($suggestions)) {
@@ -281,7 +351,7 @@ class REST_Controller {
         }
         
         // Send notification to API
-        $api_client = new API_Client();
+        $api_client = API_Client::instance();
         $notification_result = $api_client->track_coming_soon($zpid, $email);
         
         if (is_wp_error($notification_result)) {
@@ -326,7 +396,7 @@ class REST_Controller {
         $position = intval($request->get_param('position') ?: 0);
         
         // Send to analytics
-        $analytics = new Analytics();
+        $analytics = Analytics::instance();
         $result = $analytics->track_click($zpid, $query, $position);
         
         if (is_wp_error($result)) {
@@ -336,6 +406,76 @@ class REST_Controller {
         $response = rest_ensure_response([
             'success' => true
         ]);
+        
+        // Add rate limit headers
+        $headers = Rate_Limiter::get_headers($rate_limit);
+        foreach ($headers as $header => $value) {
+            $response->header($header, $value);
+        }
+        
+        return $response;
+    }
+    
+    /**
+     * Proxy API requests securely
+     * 
+     * @param WP_REST_Request $request
+     * @return WP_REST_Response|WP_Error
+     */
+    public function proxy_search($request) {
+        // Check rate limit
+        $rate_limit = Rate_Limiter::check('search');
+        if (isset($rate_limit['error'])) {
+            $error = new \WP_Error(
+                'rate_limit_exceeded',
+                $rate_limit['message'],
+                ['status' => 429]
+            );
+            return Rate_Limiter::add_to_error($error, $rate_limit);
+        }
+        
+        $endpoint = $request->get_param('endpoint');
+        $params = $request->get_param('params');
+        
+        // Get the backend API key (not exposed to frontend)
+        $api_key = get_option('zippicks_search_backend_api_key', '');
+        if (empty($api_key)) {
+            return new \WP_Error(
+                'api_key_missing',
+                __('Backend API key not configured', 'zippicks-smart-search'),
+                ['status' => 500]
+            );
+        }
+        
+        // Initialize API client with backend key
+        $api_client = new API_Client();
+        $api_client->set_api_key($api_key);
+        
+        // Make the proxied request
+        $result = null;
+        switch ($endpoint) {
+            case 'search':
+            case 'restaurants/search':
+                $result = $api_client->search_restaurants($params);
+                break;
+            case 'restaurants/details':
+                if (isset($params['zpid'])) {
+                    $result = $api_client->get_restaurant_details($params['zpid']);
+                }
+                break;
+            default:
+                return new \WP_Error(
+                    'invalid_endpoint',
+                    __('Invalid API endpoint', 'zippicks-smart-search'),
+                    ['status' => 400]
+                );
+        }
+        
+        if (is_wp_error($result)) {
+            return $result;
+        }
+        
+        $response = rest_ensure_response($result);
         
         // Add rate limit headers
         $headers = Rate_Limiter::get_headers($rate_limit);
@@ -388,49 +528,6 @@ class REST_Controller {
         ];
     }
     
-    /**
-     * Get location data
-     * 
-     * @param float|null $lat Latitude
-     * @param float|null $lng Longitude
-     * @return array|WP_Error
-     */
-    private function get_location($lat = null, $lng = null) {
-        // If coordinates provided, use them
-        if ($lat !== null && $lng !== null) {
-            return [
-                'lat' => floatval($lat),
-                'lng' => floatval($lng),
-                'source' => 'user_provided'
-            ];
-        }
-        
-        // Try to get from Geo Service plugin
-        if (class_exists('\\ZipPicks\\Geo\\Location_Detector')) {
-            $detector = new \ZipPicks\Geo\Location_Detector();
-            $location = $detector->get_user_location(get_current_user_id());
-            
-            if ($location && isset($location['latitude']) && isset($location['longitude'])) {
-                return [
-                    'lat' => floatval($location['latitude']),
-                    'lng' => floatval($location['longitude']),
-                    'city' => $location['city'] ?? null,
-                    'state' => $location['state'] ?? null,
-                    'source' => $location['source'] ?? 'geo_service'
-                ];
-            }
-        }
-        
-        // Fallback to default location
-        $default_location = get_option('zippicks_search_default_location', [
-            'lat' => 34.0522,
-            'lng' => -118.2437,
-            'city' => 'Los Angeles',
-            'state' => 'CA'
-        ]);
-        
-        return array_merge($default_location, ['source' => 'default']);
-    }
     
     /**
      * Process autocomplete suggestions
@@ -499,7 +596,7 @@ class REST_Controller {
      * @param array $results Search results
      */
     private function track_search($query, $location, $results) {
-        $analytics = new Analytics();
+        $analytics = Analytics::instance();
         
         $analytics->track_search([
             'query' => $query,

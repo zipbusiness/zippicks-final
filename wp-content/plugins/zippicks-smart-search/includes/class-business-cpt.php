@@ -80,6 +80,10 @@ class Business_CPT {
     
     /**
      * Register meta fields for REST API
+     * 
+     * All meta fields include auth_callback to ensure consistent
+     * authorization checks. Only users with 'edit_posts' capability
+     * can modify these meta fields via REST API or other means.
      */
     private static function register_meta_fields() {
         // ZPID - Primary identifier from PostgreSQL
@@ -100,6 +104,9 @@ class Business_CPT {
             'description'       => 'Business city',
             'single'            => true,
             'sanitize_callback' => 'sanitize_text_field',
+            'auth_callback'     => function() {
+                return current_user_can('edit_posts');
+            },
             'show_in_rest'      => true,
         ]);
         
@@ -108,6 +115,9 @@ class Business_CPT {
             'description'       => 'Business state',
             'single'            => true,
             'sanitize_callback' => 'sanitize_text_field',
+            'auth_callback'     => function() {
+                return current_user_can('edit_posts');
+            },
             'show_in_rest'      => true,
         ]);
         
@@ -116,6 +126,9 @@ class Business_CPT {
             'description'       => 'Business address',
             'single'            => true,
             'sanitize_callback' => 'sanitize_text_field',
+            'auth_callback'     => function() {
+                return current_user_can('edit_posts');
+            },
             'show_in_rest'      => true,
         ]);
         
@@ -123,6 +136,9 @@ class Business_CPT {
             'type'              => 'number',
             'description'       => 'Latitude',
             'single'            => true,
+            'auth_callback'     => function() {
+                return current_user_can('edit_posts');
+            },
             'show_in_rest'      => true,
         ]);
         
@@ -130,6 +146,9 @@ class Business_CPT {
             'type'              => 'number',
             'description'       => 'Longitude',
             'single'            => true,
+            'auth_callback'     => function() {
+                return current_user_can('edit_posts');
+            },
             'show_in_rest'      => true,
         ]);
         
@@ -139,6 +158,9 @@ class Business_CPT {
             'description'       => 'Cuisine type',
             'single'            => true,
             'sanitize_callback' => 'sanitize_text_field',
+            'auth_callback'     => function() {
+                return current_user_can('edit_posts');
+            },
             'show_in_rest'      => true,
         ]);
         
@@ -146,6 +168,9 @@ class Business_CPT {
             'type'              => 'integer',
             'description'       => 'Price range (1-4)',
             'single'            => true,
+            'auth_callback'     => function() {
+                return current_user_can('edit_posts');
+            },
             'show_in_rest'      => true,
         ]);
         
@@ -153,6 +178,9 @@ class Business_CPT {
             'type'              => 'number',
             'description'       => 'Average rating',
             'single'            => true,
+            'auth_callback'     => function() {
+                return current_user_can('edit_posts');
+            },
             'show_in_rest'      => true,
         ]);
         
@@ -160,6 +188,9 @@ class Business_CPT {
             'type'              => 'array',
             'description'       => 'Associated vibes',
             'single'            => true,
+            'auth_callback'     => function() {
+                return current_user_can('edit_posts');
+            },
             'show_in_rest'      => [
                 'schema' => [
                     'type'  => 'array',
@@ -175,6 +206,9 @@ class Business_CPT {
             'type'              => 'string',
             'description'       => 'Last sync timestamp',
             'single'            => true,
+            'auth_callback'     => function() {
+                return current_user_can('edit_posts');
+            },
             'show_in_rest'      => true,
         ]);
     }
@@ -209,7 +243,7 @@ class Business_CPT {
         switch ($column) {
             case 'zpid':
                 $zpid = get_post_meta($post_id, '_zpid', true);
-                echo $zpid ?: '—';
+                echo esc_html($zpid ?: '—');
                 break;
                 
             case 'location':
@@ -220,15 +254,15 @@ class Business_CPT {
                 
             case 'cuisine':
                 $cuisine = get_post_meta($post_id, '_cuisine_type', true);
-                echo $cuisine ?: '—';
+                echo esc_html($cuisine ?: '—');
                 break;
                 
             case 'rating':
                 $rating = get_post_meta($post_id, '_rating', true);
                 if ($rating) {
-                    echo number_format($rating, 1) . ' ⭐';
+                    echo esc_html(number_format($rating, 1) . ' ⭐');
                 } else {
-                    echo '—';
+                    echo esc_html('—');
                 }
                 break;
         }
@@ -361,22 +395,64 @@ class Business_CPT {
             return;
         }
         
-        // Save fields
-        $fields = [
+        // Save text fields with proper sanitization
+        $text_fields = [
             'business_zpid' => '_zpid',
             'business_city' => '_city',
             'business_state' => '_state',
             'business_address' => '_address',
             'business_cuisine' => '_cuisine_type',
-            'business_price_range' => '_price_range',
-            'business_rating' => '_rating',
-            'business_lat' => '_lat',
-            'business_lng' => '_lng',
         ];
         
-        foreach ($fields as $field => $meta_key) {
+        foreach ($text_fields as $field => $meta_key) {
             if (isset($_POST[$field])) {
                 update_post_meta($post_id, $meta_key, sanitize_text_field($_POST[$field]));
+            }
+        }
+        
+        // Save numeric fields with proper validation
+        
+        // Price range: integer 1-4
+        if (isset($_POST['business_price_range'])) {
+            $price_range = intval($_POST['business_price_range']);
+            // Validate range 1-4, or empty string for no selection
+            if ($price_range >= 1 && $price_range <= 4) {
+                update_post_meta($post_id, '_price_range', $price_range);
+            } elseif (empty($_POST['business_price_range'])) {
+                delete_post_meta($post_id, '_price_range');
+            }
+        }
+        
+        // Rating: float 0-5
+        if (isset($_POST['business_rating'])) {
+            $rating = floatval($_POST['business_rating']);
+            // Validate range 0-5
+            if ($rating >= 0 && $rating <= 5) {
+                update_post_meta($post_id, '_rating', $rating);
+            } elseif (empty($_POST['business_rating'])) {
+                delete_post_meta($post_id, '_rating');
+            }
+        }
+        
+        // Latitude: float -90 to 90
+        if (isset($_POST['business_lat'])) {
+            $lat = floatval($_POST['business_lat']);
+            // Validate latitude range
+            if ($lat >= -90 && $lat <= 90) {
+                update_post_meta($post_id, '_lat', $lat);
+            } elseif (empty($_POST['business_lat'])) {
+                delete_post_meta($post_id, '_lat');
+            }
+        }
+        
+        // Longitude: float -180 to 180
+        if (isset($_POST['business_lng'])) {
+            $lng = floatval($_POST['business_lng']);
+            // Validate longitude range
+            if ($lng >= -180 && $lng <= 180) {
+                update_post_meta($post_id, '_lng', $lng);
+            } elseif (empty($_POST['business_lng'])) {
+                delete_post_meta($post_id, '_lng');
             }
         }
     }
@@ -435,35 +511,142 @@ class Business_CPT {
     }
     
     /**
+     * Validate and sanitize API data
+     * 
+     * @param array $data Raw data from API
+     * @return array|\WP_Error Validated data or WP_Error on validation failure
+     */
+    private static function validate_api_data($data) {
+        $validated = [];
+        $errors = [];
+        
+        // Required fields
+        if (empty($data['zpid']) || !is_string($data['zpid'])) {
+            $errors[] = 'ZPID is required and must be a string';
+        } else {
+            // Validate ZPID format (alphanumeric with hyphens/underscores)
+            $zpid = trim($data['zpid']);
+            if (!preg_match('/^[a-zA-Z0-9_-]+$/', $zpid)) {
+                $errors[] = 'ZPID contains invalid characters';
+            } else {
+                $validated['zpid'] = $zpid;
+            }
+        }
+        
+        if (empty($data['name']) || !is_string($data['name'])) {
+            $errors[] = 'Business name is required and must be a string';
+        } else {
+            $validated['name'] = sanitize_text_field($data['name']);
+        }
+        
+        // String fields (optional but sanitized)
+        $validated['city'] = isset($data['city']) ? sanitize_text_field($data['city']) : '';
+        $validated['address'] = isset($data['address']) ? sanitize_text_field($data['address']) : '';
+        $validated['cuisine_type'] = isset($data['cuisine_type']) ? sanitize_text_field($data['cuisine_type']) : '';
+        
+        // State validation (2-letter code)
+        if (!empty($data['state'])) {
+            $state = strtoupper(trim($data['state']));
+            if (preg_match('/^[A-Z]{2}$/', $state)) {
+                $validated['state'] = $state;
+            } else {
+                $errors[] = 'State must be a 2-letter code';
+            }
+        } else {
+            $validated['state'] = '';
+        }
+        
+        // Latitude validation (-90 to 90)
+        if (isset($data['latitude'])) {
+            $lat = filter_var($data['latitude'], FILTER_VALIDATE_FLOAT);
+            if ($lat !== false && $lat >= -90 && $lat <= 90) {
+                $validated['latitude'] = $lat;
+            } else {
+                $errors[] = 'Latitude must be a number between -90 and 90';
+            }
+        }
+        
+        // Longitude validation (-180 to 180)
+        if (isset($data['longitude'])) {
+            $lng = filter_var($data['longitude'], FILTER_VALIDATE_FLOAT);
+            if ($lng !== false && $lng >= -180 && $lng <= 180) {
+                $validated['longitude'] = $lng;
+            } else {
+                $errors[] = 'Longitude must be a number between -180 and 180';
+            }
+        }
+        
+        // Price range validation (1-4)
+        if (isset($data['price_range'])) {
+            $price = filter_var($data['price_range'], FILTER_VALIDATE_INT);
+            if ($price !== false && $price >= 1 && $price <= 4) {
+                $validated['price_range'] = $price;
+            } else {
+                $errors[] = 'Price range must be an integer between 1 and 4';
+            }
+        }
+        
+        // Rating validation (0-5)
+        if (isset($data['rating'])) {
+            $rating = filter_var($data['rating'], FILTER_VALIDATE_FLOAT);
+            if ($rating !== false && $rating >= 0 && $rating <= 5) {
+                $validated['rating'] = round($rating, 1); // Round to 1 decimal place
+            } else {
+                $errors[] = 'Rating must be a number between 0 and 5';
+            }
+        }
+        
+        // Vibes validation (array of strings)
+        if (isset($data['vibes'])) {
+            if (is_array($data['vibes'])) {
+                $validated['vibes'] = array_map('sanitize_text_field', $data['vibes']);
+            } else {
+                $errors[] = 'Vibes must be an array';
+            }
+        } else {
+            $validated['vibes'] = [];
+        }
+        
+        // Return errors if any validation failed
+        if (!empty($errors)) {
+            return new \WP_Error('validation_failed', 'Validation failed', $errors);
+        }
+        
+        return $validated;
+    }
+    
+    /**
      * Create or update business from API data
      * 
      * @param array $data Restaurant data from API
      * @return int|\WP_Error Post ID on success, WP_Error on failure
      */
     public static function create_or_update_from_api($data) {
-        if (empty($data['zpid'])) {
-            return new \WP_Error('missing_zpid', 'ZPID is required');
+        // Validate and sanitize input data
+        $validated = self::validate_api_data($data);
+        if (is_wp_error($validated)) {
+            return $validated;
         }
         
         // Check if business already exists
-        $existing = self::get_by_zpid($data['zpid']);
+        $existing = self::get_by_zpid($validated['zpid']);
         
         $post_data = [
-            'post_title' => $data['name'],
-            'post_name' => sanitize_title($data['name'] . '-' . ($data['city'] ?? '')),
+            'post_title' => $validated['name'],
+            'post_name' => sanitize_title($validated['name'] . '-' . $validated['city']),
             'post_type' => 'business',
             'post_status' => 'publish',
             'meta_input' => [
-                '_zpid' => $data['zpid'],
-                '_city' => $data['city'] ?? '',
-                '_state' => $data['state'] ?? '',
-                '_address' => $data['address'] ?? '',
-                '_lat' => $data['latitude'] ?? null,
-                '_lng' => $data['longitude'] ?? null,
-                '_cuisine_type' => $data['cuisine_type'] ?? '',
-                '_price_range' => $data['price_range'] ?? null,
-                '_rating' => $data['rating'] ?? null,
-                '_vibes' => $data['vibes'] ?? [],
+                '_zpid' => $validated['zpid'],
+                '_city' => $validated['city'],
+                '_state' => $validated['state'],
+                '_address' => $validated['address'],
+                '_lat' => $validated['latitude'] ?? null,
+                '_lng' => $validated['longitude'] ?? null,
+                '_cuisine_type' => $validated['cuisine_type'],
+                '_price_range' => $validated['price_range'] ?? null,
+                '_rating' => $validated['rating'] ?? null,
+                '_vibes' => $validated['vibes'],
                 '_last_synced' => current_time('mysql'),
             ],
         ];

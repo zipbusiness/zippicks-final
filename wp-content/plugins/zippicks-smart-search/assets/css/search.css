@@ -354,3 +354,117 @@
     text-align: center;
     margin-bottom: 1.5rem;
 }
+
+/* Email Notification Form */
+.zippicks-email-form-container {
+    margin-top: 12px;
+    padding: 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.zippicks-email-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.email-form-header {
+    text-align: center;
+}
+
+.email-form-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.email-form-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.email-input {
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+}
+
+.email-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+.email-error-message {
+    padding: 8px 12px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 4px;
+    color: #dc2626;
+    font-size: 13px;
+}
+
+.email-form-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.email-submit-btn,
+.email-cancel-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.email-submit-btn {
+    background: #6366f1;
+    color: white;
+}
+
+.email-submit-btn:hover:not(:disabled) {
+    background: #4f46e5;
+}
+
+.email-submit-btn:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+.email-cancel-btn {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #d1d5db;
+}
+
+.email-cancel-btn:hover {
+    background: #e2e8f0;
+    color: #475569;
+}
+
+/* Responsive email form */
+@media (max-width: 640px) {
+    .zippicks-email-form-container {
+        margin: 12px -16px 0;
+        border-radius: 0;
+    }
+    
+    .email-form-actions {
+        flex-direction: column;
+    }
+    
+    .email-submit-btn,
+    .email-cancel-btn {
+        width: 100%;
+    }
+}

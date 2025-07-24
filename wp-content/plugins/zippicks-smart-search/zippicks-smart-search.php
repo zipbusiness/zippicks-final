@@ -63,6 +63,9 @@ final class Smart_Search {
      * Load required files
      */
     private function load_dependencies() {
+        // Traits
+        require_once ZIPPICKS_SEARCH_PLUGIN_DIR . 'includes/traits/trait-location-detection.php';
+        
         // Core classes
         require_once ZIPPICKS_SEARCH_PLUGIN_DIR . 'includes/class-installer.php';
         require_once ZIPPICKS_SEARCH_PLUGIN_DIR . 'includes/class-business-cpt.php';
@@ -251,12 +254,15 @@ final class Smart_Search {
         );
         
         // Prepare localization data
+        $use_proxy = get_option('zippicks_search_use_proxy', false);
         $localize_data = [
             'ajax_url' => admin_url('admin-ajax.php'),
             'rest_url' => rest_url('zippicks/v1/'),
             'nonce' => wp_create_nonce('zippicks_search_nonce'),
-            'api_key' => $this->get_frontend_api_key(),
+            'api_key' => $use_proxy ? '' : $this->get_frontend_api_key(), // Hide key if using proxy
+            'use_proxy' => $use_proxy,
             'default_location' => $this->get_default_location(),
+            'business_url_pattern' => $this->get_business_url_pattern(),
             'debug' => defined('WP_DEBUG') && WP_DEBUG,
             'strings' => [
                 'searching' => __('Searching...', 'zippicks-smart-search'),
@@ -313,12 +319,76 @@ final class Smart_Search {
      * @return array
      */
     private function get_default_location() {
-        return [
+        // Define Los Angeles as the fallback location
+        $fallback_location = [
             'lat' => 34.0522,
             'lng' => -118.2437,
             'city' => 'Los Angeles',
             'state' => 'CA'
         ];
+        
+        // Retrieve from WordPress options with fallback
+        return get_option('zippicks_search_default_location', $fallback_location);
+    }
+    
+    /**
+     * Get business URL pattern compatible with current permalink structure
+     * 
+     * @return string URL pattern with {zpid} placeholder
+     */
+    private function get_business_url_pattern() {
+        // Check if ZipPicks Core plugin provides business URL structure
+        if (function_exists('zippicks_get_business_url_pattern')) {
+            return zippicks_get_business_url_pattern();
+        }
+        
+        // Check for custom post type permalink structure
+        $business_post_type = 'zippicks_business';
+        
+        // Try to get a sample business post to determine URL structure
+        $sample_business = get_posts([
+            'post_type' => $business_post_type,
+            'posts_per_page' => 1,
+            'post_status' => 'publish',
+            'meta_query' => [
+                [
+                    'key' => 'zpid',
+                    'compare' => 'EXISTS'
+                ]
+            ]
+        ]);
+        
+        if (!empty($sample_business)) {
+            $post = $sample_business[0];
+            $zpid = get_post_meta($post->ID, 'zpid', true);
+            
+            if ($zpid) {
+                $sample_url = get_permalink($post->ID);
+                // Replace the actual zpid with placeholder
+                $pattern = str_replace($zpid, '{zpid}', $sample_url);
+                // Remove domain to get relative pattern
+                $pattern = parse_url($pattern, PHP_URL_PATH);
+                
+                if ($pattern) {
+                    return $pattern;
+                }
+            }
+        }
+        
+        // Fallback patterns based on permalink structure
+        $permalink_structure = get_option('permalink_structure');
+        
+        if (empty($permalink_structure)) {
+            // Plain permalinks
+            return '/?post_type=zippicks_business&zpid={zpid}';
+        } else {
+            // Pretty permalinks - try common patterns
+            if (strpos($permalink_structure, '/%postname%/') !== false) {
+                return '/business/{zpid}/';
+            } else {
+                return '/zippicks_business/{zpid}/';
+            }
+        }
     }
     
     /**

@@ -10,7 +10,9 @@
         config: {
             minLength: 2,
             debounceDelay: 150,
-            maxSuggestions: 10
+            maxSuggestions: 10,
+            rateLimitDelay: 100,        // Minimum delay between requests (ms)
+            maxRequestsPerMinute: 30    // Maximum requests per minute
         },
         
         state: {
@@ -18,7 +20,11 @@
             currentRequest: null,
             isOpen: false,
             selectedIndex: -1,
-            timeout: null
+            timeout: null,
+            blurTimeout: null,
+            lastRequestTime: 0,
+            requestCount: 0,
+            requestCountResetTime: 0
         },
         
         init: function() {
@@ -70,9 +76,16 @@
         },
         
         handleBlur: function() {
+            // Clear any existing blur timeout to prevent race conditions
+            if (this.state.blurTimeout) {
+                clearTimeout(this.state.blurTimeout);
+                this.state.blurTimeout = null;
+            }
+            
             // Delay close to allow click on suggestions
-            setTimeout(() => {
+            this.state.blurTimeout = setTimeout(() => {
                 this.close();
+                this.state.blurTimeout = null;
             }, 200);
         },
         
@@ -117,6 +130,11 @@
         },
         
         getSuggestions: function(query) {
+            // Check rate limiting before making request
+            if (!this.checkRateLimit()) {
+                return;
+            }
+            
             // Cancel previous request
             if (this.state.currentRequest) {
                 this.state.currentRequest.abort();
@@ -124,7 +142,8 @@
             
             const params = {
                 action: 'zippicks_autocomplete',
-                q: query
+                q: query,
+                nonce: zippicks_search.nonce
             };
             
             // Add location if available
@@ -132,6 +151,9 @@
                 params.lat = window.ZipPicksSearch.state.currentLocation.lat;
                 params.lng = window.ZipPicksSearch.state.currentLocation.lng;
             }
+            
+            // Update rate limiting tracking
+            this.updateRateLimitTracking();
             
             this.state.currentRequest = $.get(zippicks_search.ajax_url, params)
                 .done(response => {
@@ -147,6 +169,39 @@
                 .always(() => {
                     this.state.currentRequest = null;
                 });
+        },
+        
+        checkRateLimit: function() {
+            const now = Date.now();
+            
+            // Check minimum delay between requests
+            if (now - this.state.lastRequestTime < this.config.rateLimitDelay) {
+                return false;
+            }
+            
+            // Reset request count if minute has passed
+            if (now - this.state.requestCountResetTime >= 60000) {
+                this.state.requestCount = 0;
+                this.state.requestCountResetTime = now;
+            }
+            
+            // Check maximum requests per minute
+            if (this.state.requestCount >= this.config.maxRequestsPerMinute) {
+                return false;
+            }
+            
+            return true;
+        },
+        
+        updateRateLimitTracking: function() {
+            const now = Date.now();
+            this.state.lastRequestTime = now;
+            this.state.requestCount++;
+            
+            // Initialize reset time if not set
+            if (this.state.requestCountResetTime === 0) {
+                this.state.requestCountResetTime = now;
+            }
         },
         
         showSuggestions: function(suggestions) {
@@ -274,6 +329,12 @@
         },
         
         close: function() {
+            // Clear blur timeout to prevent memory leaks
+            if (this.state.blurTimeout) {
+                clearTimeout(this.state.blurTimeout);
+                this.state.blurTimeout = null;
+            }
+            
             $('#zippicks-autocomplete').removeClass('active').empty();
             this.state.isOpen = false;
             this.state.selectedIndex = -1;
@@ -298,9 +359,29 @@
                 return $existingResult.attr('href');
             }
             
-            // Build URL based on pattern
-            // This assumes business posts use zpid as slug
-            return `/business/${zpid}/`;
+            // Build URL based on configurable pattern
+            return this.buildBusinessUrl(zpid);
+        },
+        
+        buildBusinessUrl: function(zpid) {
+            // Get URL pattern from WordPress configuration
+            let urlPattern = '';
+            
+            // Try to get from global zippicks_search object
+            if (window.zippicks_search && window.zippicks_search.business_url_pattern) {
+                urlPattern = window.zippicks_search.business_url_pattern;
+            }
+            // Fallback to checking for a dedicated business URL config
+            else if (window.zippicks_autocomplete_config && window.zippicks_autocomplete_config.business_url_pattern) {
+                urlPattern = window.zippicks_autocomplete_config.business_url_pattern;
+            }
+            // Final fallback to default pattern
+            else {
+                urlPattern = '/business/{zpid}/';
+            }
+            
+            // Replace placeholder with actual zpid
+            return urlPattern.replace('{zpid}', zpid);
         },
         
         escapeHtml: function(text) {

@@ -30,6 +30,12 @@ class Error_Tracker {
     private static $instance = null;
     
     /**
+     * Previous error handler
+     * @var callable|null
+     */
+    private $previous_error_handler = null;
+    
+    /**
      * Get instance
      * @return Error_Tracker
      */
@@ -55,8 +61,8 @@ class Error_Tracker {
         add_action('wp_ajax_zippicks_report_error', [$this, 'handle_frontend_error']);
         add_action('wp_ajax_nopriv_zippicks_report_error', [$this, 'handle_frontend_error']);
         
-        // PHP error handling
-        set_error_handler([$this, 'handle_php_error'], E_ERROR | E_WARNING | E_PARSE);
+        // PHP error handling - save previous handler for chaining
+        $this->previous_error_handler = set_error_handler([$this, 'handle_php_error'], E_ERROR | E_WARNING | E_PARSE);
         register_shutdown_function([$this, 'handle_fatal_error']);
         
         // API error tracking
@@ -150,32 +156,35 @@ class Error_Tracker {
      */
     public function handle_php_error($errno, $errstr, $errfile, $errline) {
         // Only track our plugin errors
-        if (strpos($errfile, 'zippicks-smart-search') === false) {
-            return false;
+        if (strpos($errfile, 'zippicks-smart-search') !== false) {
+            $severity = 'warning';
+            switch ($errno) {
+                case E_ERROR:
+                case E_PARSE:
+                    $severity = 'error';
+                    break;
+                case E_WARNING:
+                    $severity = 'warning';
+                    break;
+                case E_NOTICE:
+                    $severity = 'notice';
+                    break;
+            }
+            
+            $this->track_error('php', $errstr, [
+                'file' => $errfile,
+                'line' => $errline,
+                'errno' => $errno
+            ], $severity);
         }
         
-        $severity = 'warning';
-        switch ($errno) {
-            case E_ERROR:
-            case E_PARSE:
-                $severity = 'error';
-                break;
-            case E_WARNING:
-                $severity = 'warning';
-                break;
-            case E_NOTICE:
-                $severity = 'notice';
-                break;
+        // Chain to previous error handler if it exists
+        if ($this->previous_error_handler && is_callable($this->previous_error_handler)) {
+            return call_user_func($this->previous_error_handler, $errno, $errstr, $errfile, $errline);
         }
         
-        $this->track_error('php', $errstr, [
-            'file' => $errfile,
-            'line' => $errline,
-            'errno' => $errno
-        ], $severity);
-        
-        // Don't execute PHP internal error handler
-        return true;
+        // If no previous handler, let PHP handle it normally
+        return false;
     }
     
     /**
@@ -254,27 +263,86 @@ class Error_Tracker {
     private function send_to_external_services($error_data) {
         // Sentry integration
         if (defined('ZIPPICKS_SENTRY_DSN') && ZIPPICKS_SENTRY_DSN) {
-            do_action('zippicks_send_to_sentry', $error_data);
+            try {
+                do_action('zippicks_send_to_sentry', $error_data);
+            } catch (\Exception $e) {
+                // Silently ignore to prevent cascading errors
+                $this->log_failed_error_report('Sentry', $e->getMessage());
+            }
         }
         
         // Rollbar integration
         if (defined('ZIPPICKS_ROLLBAR_TOKEN') && ZIPPICKS_ROLLBAR_TOKEN) {
-            do_action('zippicks_send_to_rollbar', $error_data);
+            try {
+                do_action('zippicks_send_to_rollbar', $error_data);
+            } catch (\Exception $e) {
+                // Silently ignore to prevent cascading errors
+                $this->log_failed_error_report('Rollbar', $e->getMessage());
+            }
         }
         
         // Custom error service
         $custom_endpoint = get_option('zippicks_error_service_endpoint');
         if ($custom_endpoint) {
-            wp_remote_post($custom_endpoint, [
-                'body' => json_encode($error_data),
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                    'X-Site-URL' => site_url()
-                ],
-                'timeout' => 5,
-                'blocking' => false
-            ]);
+            try {
+                // Validate endpoint URL
+                if (!filter_var($custom_endpoint, FILTER_VALIDATE_URL)) {
+                    $this->log_failed_error_report('Custom Service', 'Invalid endpoint URL');
+                    return;
+                }
+                
+                $response = wp_remote_post($custom_endpoint, [
+                    'body' => json_encode($error_data),
+                    'headers' => [
+                        'Content-Type' => 'application/json',
+                        'X-Site-URL' => site_url()
+                    ],
+                    'timeout' => 5,
+                    'blocking' => false,
+                    'sslverify' => apply_filters('zippicks_error_service_ssl_verify', true)
+                ]);
+                
+                // Check for WP_Error even with non-blocking requests
+                if (is_wp_error($response)) {
+                    $this->log_failed_error_report('Custom Service', $response->get_error_message());
+                }
+            } catch (\Exception $e) {
+                // Catch any exceptions to prevent cascading errors
+                $this->log_failed_error_report('Custom Service', $e->getMessage());
+            }
         }
+    }
+    
+    /**
+     * Log failed error report attempts
+     * 
+     * @param string $service Service name
+     * @param string $reason Failure reason
+     */
+    private function log_failed_error_report($service, $reason) {
+        // Only log to file, don't store in database to prevent infinite loops
+        if (defined('WP_DEBUG_LOG') && WP_DEBUG_LOG) {
+            error_log(sprintf(
+                '[ZipPicks Search] Failed to send error to %s: %s',
+                $service,
+                $reason
+            ));
+        }
+        
+        // Store minimal failure info in transient for monitoring
+        $failures = get_transient('zippicks_error_service_failures') ?: [];
+        $failures[] = [
+            'service' => $service,
+            'time' => time(),
+            'reason' => substr($reason, 0, 100) // Limit reason length
+        ];
+        
+        // Keep only last 10 failures
+        if (count($failures) > 10) {
+            $failures = array_slice($failures, -10);
+        }
+        
+        set_transient('zippicks_error_service_failures', $failures, HOUR_IN_SECONDS);
     }
     
     /**

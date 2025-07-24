@@ -18,6 +18,12 @@ class Security_Manager {
     private static $instance = null;
     
     /**
+     * CSP nonce for scripts and styles
+     * @var string
+     */
+    private $csp_nonce = null;
+    
+    /**
      * Get instance
      * @return Security_Manager
      */
@@ -43,7 +49,7 @@ class Security_Manager {
         add_action('send_headers', [$this, 'add_security_headers']);
         
         // Sanitize search results before output
-        add_filter('zippicks_search_results', [$this, 'sanitize_search_results'], 10, 2);
+        add_filter('zippicks_search_results', [$this, 'sanitize_search_results'], 10, 1);
         
         // Add nonce verification to all AJAX requests
         add_filter('wp_ajax_nopriv_zippicks_search', [$this, 'verify_ajax_nonce'], 1);
@@ -54,6 +60,10 @@ class Security_Manager {
         
         // Add security data to frontend
         add_filter('zippicks_search_localize_data', [$this, 'add_security_data']);
+        
+        // Add nonces to script and style tags
+        add_filter('script_loader_tag', [$this, 'add_nonce_to_scripts'], 10, 3);
+        add_filter('style_loader_tag', [$this, 'add_nonce_to_styles'], 10, 4);
     }
     
     /**
@@ -64,30 +74,37 @@ class Security_Manager {
             return;
         }
         
-        // Content Security Policy
+        // Get nonce for this request
+        $nonce = $this->get_csp_nonce();
+        
+        // Content Security Policy with nonce-based approach
         $csp = "default-src 'self'; " .
-               "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " .
-               "style-src 'self' 'unsafe-inline'; " .
+               "script-src 'self' 'nonce-" . $nonce . "'; " .
+               "style-src 'self' 'nonce-" . $nonce . "'; " .
                "img-src 'self' data: https:; " .
-               "connect-src 'self' " . esc_url(rest_url()) . ";";
+               "connect-src 'self' " . esc_url(rest_url()) . "; " .
+               "font-src 'self' data:; " .
+               "object-src 'none'; " .
+               "base-uri 'self'; " .
+               "form-action 'self'; " .
+               "frame-ancestors 'none';";
         
         header("Content-Security-Policy: $csp");
         
-        // Other security headers
+        // Modern security headers (removed deprecated X-XSS-Protection)
         header('X-Content-Type-Options: nosniff');
-        header('X-Frame-Options: SAMEORIGIN');
-        header('X-XSS-Protection: 1; mode=block');
+        header('X-Frame-Options: DENY');
         header('Referrer-Policy: strict-origin-when-cross-origin');
+        header('Permissions-Policy: geolocation=(self), microphone=(), camera=()');
     }
     
     /**
      * Sanitize search results before output
      * 
      * @param array $results Search results
-     * @param string $context Output context
      * @return array
      */
-    public function sanitize_search_results($results, $context = 'frontend') {
+    public function sanitize_search_results($results) {
         if (!is_array($results)) {
             return [];
         }
@@ -271,7 +288,8 @@ class Security_Manager {
             'escape_html' => true,
             'max_query_length' => 100,
             'allowed_html_tags' => ['strong', 'em', 'span'],
-            'rate_limit_message' => __('Too many requests. Please wait a moment and try again.', 'zippicks-smart-search')
+            'rate_limit_message' => __('Too many requests. Please wait a moment and try again.', 'zippicks-smart-search'),
+            'csp_nonce' => $this->get_csp_nonce()
         ];
         
         return $data;
@@ -342,5 +360,70 @@ class Security_Manager {
      */
     public static function generate_search_nonce($action = 'search') {
         return wp_create_nonce('zippicks_search_' . $action);
+    }
+    
+    /**
+     * Get CSP nonce for inline scripts and styles
+     * 
+     * @return string
+     */
+    public function get_csp_nonce() {
+        if ($this->csp_nonce === null) {
+            $this->csp_nonce = wp_create_nonce('zippicks_csp_nonce');
+        }
+        return $this->csp_nonce;
+    }
+    
+    /**
+     * Get CSP nonce attribute for HTML elements
+     * 
+     * @return string
+     */
+    public function get_nonce_attribute() {
+        return 'nonce="' . esc_attr($this->get_csp_nonce()) . '"';
+    }
+    
+    /**
+     * Add nonce to script tags
+     * 
+     * @param string $tag HTML tag
+     * @param string $handle Script handle
+     * @param string $src Script source
+     * @return string Modified tag
+     */
+    public function add_nonce_to_scripts($tag, $handle, $src) {
+        // Only add nonce to our plugin's scripts
+        $plugin_handles = [
+            'zippicks-smart-search',
+            'zippicks-search-autocomplete',
+            'zippicks-error-reporter',
+            'zippicks-search-security'
+        ];
+        
+        if (in_array($handle, $plugin_handles) || strpos($handle, 'zippicks') !== false) {
+            $nonce = $this->get_csp_nonce();
+            return str_replace('<script', '<script nonce="' . esc_attr($nonce) . '"', $tag);
+        }
+        
+        return $tag;
+    }
+    
+    /**
+     * Add nonce to style tags
+     * 
+     * @param string $tag HTML tag
+     * @param string $handle Style handle
+     * @param string $href Style href
+     * @param string $media Media attribute
+     * @return string Modified tag
+     */
+    public function add_nonce_to_styles($tag, $handle, $href, $media) {
+        // Only add nonce to our plugin's styles
+        if (strpos($handle, 'zippicks') !== false) {
+            $nonce = $this->get_csp_nonce();
+            return str_replace('<link', '<link nonce="' . esc_attr($nonce) . '"', $tag);
+        }
+        
+        return $tag;
     }
 }

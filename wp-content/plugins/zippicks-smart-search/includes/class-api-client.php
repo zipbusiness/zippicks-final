@@ -31,9 +31,21 @@ class API_Client {
     private $timeout;
     
     /**
-     * Constructor
+     * Get singleton instance
+     * @return API_Client
      */
-    public function __construct() {
+    public static function instance() {
+        static $instance = null;
+        if (is_null($instance)) {
+            $instance = new self();
+        }
+        return $instance;
+    }
+    
+    /**
+     * Constructor (private for singleton)
+     */
+    private function __construct() {
         $this->api_url = $this->get_api_url();
         $this->api_key = $this->get_api_key();
         $this->timeout = get_option('zippicks_search_api_timeout', 5);

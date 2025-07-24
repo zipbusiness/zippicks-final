@@ -85,6 +85,12 @@ class Intent_Classifier {
      * @return array Classification result
      */
     public static function classify($query, $context = []) {
+        // TODO: Implement context-aware classification using:
+        // - $context['location'] for location-specific intent interpretation
+        // - $context['time'] for temporal relevance (e.g., "open now", "brunch" vs "dinner")
+        // - $context['user_history'] for personalized intent scoring based on past searches
+        // This will enhance classification accuracy by considering user's situational needs
+        
         $query_lower = strtolower($query);
         $tokens = self::tokenize($query_lower);
         

@@ -40,7 +40,7 @@ class Performance_Optimizer {
      */
     private function init_hooks() {
         // Query caching
-        add_filter('zippicks_search_cache_key', [$this, 'normalize_cache_key'], 10, 2);
+        add_filter('zippicks_search_cache_key', [$this, 'normalize_cache_key'], 10, 1);
         add_filter('zippicks_search_cache_ttl', [$this, 'optimize_cache_ttl'], 10, 2);
         
         // CDN support
@@ -64,11 +64,10 @@ class Performance_Optimizer {
     /**
      * Normalize cache key for better hit rates
      * 
-     * @param string $key Original cache key
      * @param string $query Search query
      * @return string
      */
-    public function normalize_cache_key($key, $query) {
+    public function normalize_cache_key($query) {
         // Normalize query: lowercase, trim, remove extra spaces
         $normalized_query = strtolower(trim(preg_replace('/\s+/', ' ', $query)));
         
@@ -102,10 +101,9 @@ class Performance_Optimizer {
             'hybrid' => 300,      // 5 minutes for hybrid searches
             'business' => 900,    // 15 minutes for specific business searches
             'category' => 600,    // 10 minutes for category searches
-            'default' => 300      // 5 minutes default
         ];
         
-        return $ttl_config[$intent] ?? $ttl_config['default'];
+        return $ttl_config[$intent] ?? $ttl;
     }
     
     /**
@@ -291,7 +289,7 @@ class Performance_Optimizer {
      */
     public function warm_cache() {
         // Get popular searches from analytics
-        $analytics = new Analytics();
+        $analytics = Analytics::instance();
         $popular_searches = $analytics->get_popular_searches(10);
         
         if (empty($popular_searches)) {
@@ -321,15 +319,36 @@ class Performance_Optimizer {
                 continue; // Already cached
             }
             
-            // Perform search to warm cache
-            $search_engine->search($query, $location, [
-                'radius' => 10,
-                'limit' => 20,
-                'cache_warm' => true
-            ]);
-            
-            // Small delay to avoid overwhelming the API
-            usleep(100000); // 100ms
+            // Perform search to warm cache with error handling
+            try {
+                $search_engine->search($query, $location, [
+                    'radius' => 10,
+                    'limit' => 20,
+                    'cache_warm' => true
+                ]);
+                
+                // Success - apply standard rate limit delay
+                usleep(500000); // 500ms - respect API rate limits
+            } catch (\Exception $e) {
+                // Log error if logger is available
+                if (function_exists('zippicks') && zippicks()->has('logger')) {
+                    zippicks()->get('logger')->error('Cache warming failed', [
+                        'query' => $query,
+                        'location' => $location,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                } else {
+                    error_log(sprintf(
+                        'ZipPicks Smart Search cache warming failed for query "%s": %s',
+                        $query,
+                        $e->getMessage()
+                    ));
+                }
+                
+                // Apply longer delay after error to avoid cascading failures
+                usleep(1000000); // 1 second delay after error
+            }
         }
     }
     

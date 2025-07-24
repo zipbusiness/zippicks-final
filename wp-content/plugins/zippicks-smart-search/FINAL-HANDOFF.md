@@ -26,15 +26,15 @@ CREATE TABLE search_queries (
     clicked_result_count INTEGER DEFAULT 0,
     response_time_ms INTEGER,
     cache_hit BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
-    -- Indexes for performance
-    INDEX idx_query_text (query_text),
-    INDEX idx_normalized_query (normalized_query),
-    INDEX idx_intent (intent),
-    INDEX idx_created_at (created_at),
-    INDEX idx_location (location_lat, location_lng)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Indexes for performance
+CREATE INDEX idx_query_text ON search_queries(query_text);
+CREATE INDEX idx_normalized_query ON search_queries(normalized_query);
+CREATE INDEX idx_intent ON search_queries(intent);
+CREATE INDEX idx_created_at ON search_queries(created_at);
+CREATE INDEX idx_location ON search_queries(location_lat, location_lng);
 ```
 
 #### **1.2 search_clicks**
@@ -47,13 +47,13 @@ CREATE TABLE search_clicks (
     zpid VARCHAR(50) NOT NULL,
     position INTEGER NOT NULL, -- Position in search results (1-based)
     click_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    dwell_time_seconds INTEGER, -- Time spent on clicked result
-    
-    -- Indexes
-    INDEX idx_query_id (query_id),
-    INDEX idx_zpid (zpid),
-    INDEX idx_click_time (click_time)
+    dwell_time_seconds INTEGER -- Time spent on clicked result
 );
+
+-- Indexes
+CREATE INDEX idx_query_id ON search_clicks(query_id);
+CREATE INDEX idx_zpid ON search_clicks(zpid);
+CREATE INDEX idx_click_time ON search_clicks(click_time);
 ```
 
 #### **1.3 search_demand**
@@ -73,12 +73,12 @@ CREATE TABLE search_demand (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
     -- Unique constraint to prevent duplicates
-    UNIQUE(zpid),
-    
-    -- Indexes
-    INDEX idx_demand_count (demand_count DESC),
-    INDEX idx_last_requested (last_requested DESC)
+    UNIQUE(zpid)
 );
+
+-- Indexes
+CREATE INDEX idx_demand_count ON search_demand(demand_count DESC);
+CREATE INDEX idx_last_requested ON search_demand(last_requested DESC);
 ```
 
 #### **1.4 search_notifications**
@@ -96,13 +96,13 @@ CREATE TABLE search_notifications (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
     -- Prevent duplicate notifications
-    UNIQUE(zpid, email),
-    
-    -- Indexes
-    INDEX idx_zpid (zpid),
-    INDEX idx_email (email),
-    INDEX idx_notification_sent (notification_sent)
+    UNIQUE(zpid, email)
 );
+
+-- Indexes
+CREATE INDEX idx_zpid ON search_notifications(zpid);
+CREATE INDEX idx_email ON search_notifications(email);
+CREATE INDEX idx_notification_sent ON search_notifications(notification_sent);
 ```
 
 #### **1.5 search_autocomplete_cache**
@@ -119,11 +119,12 @@ CREATE TABLE search_autocomplete_cache (
     last_used TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
-    -- Indexes
-    INDEX idx_prefix (prefix),
-    INDEX idx_usage_count (usage_count DESC),
     UNIQUE(prefix, suggestion_type, suggestion_value)
 );
+
+-- Indexes
+CREATE INDEX idx_prefix ON search_autocomplete_cache(prefix);
+CREATE INDEX idx_usage_count ON search_autocomplete_cache(usage_count DESC);
 ```
 
 #### **1.6 search_analytics_daily**
@@ -285,10 +286,11 @@ Retrieves search analytics data.
 - Cache results for 5 minutes
 
 #### **2.5 GET /api/v1/search/demand/analytics**
-Gets demand tracking analytics.
+Gets demand tracking analytics with pagination support.
 
 **Request Parameters:**
-- `limit`: Number of results (default: 20)
+- `page`: Page number (default: 1, min: 1)
+- `limit`: Number of results per page (default: 20, max: 100)
 - `min_demand`: Minimum demand count (default: 2)
 
 **Response:**
@@ -310,14 +312,25 @@ Gets demand tracking analytics.
             "Los Angeles": 123,
             "New York": 89
         }
+    },
+    "pagination": {
+        "current_page": 1,
+        "total_pages": 8,
+        "total_items": 156,
+        "items_per_page": 20,
+        "has_next": true,
+        "has_prev": false
     }
 }
 ```
 
 **Implementation Notes:**
-- Query `search_demand` table
+- Query `search_demand` table with LIMIT and OFFSET for pagination
+- Calculate offset as: `(page - 1) * limit`
 - Group by location for geographic insights
 - Order by demand_count DESC
+- Include total count query for pagination metadata
+- Validate page and limit parameters (max limit: 100)
 
 #### **2.6 POST /api/v1/search/notify**
 Registers for coming soon notifications.
@@ -428,6 +441,14 @@ Create scheduled jobs for:
 - Never expose internal IDs or sensitive data
 - Use HTTPS only
 - Add CORS headers for WordPress domain only
+
+#### **4.4 Additional Security Measures**
+- **Use prepared statements for all PostgreSQL queries** - Prevent SQL injection by using parameterized queries exclusively
+- **Log all API access** - Implement comprehensive logging for security auditing and anomaly detection
+- **Implement API key rotation** - Support key rotation without service interruption (dual-key system)
+- **Add request signing for sensitive operations** - Use HMAC-SHA256 for request integrity verification
+- **Set up automated security scanning** - Regular vulnerability scans and dependency updates
+- **Implement request/response encryption for sensitive data** - AES-256 encryption for PII and business-critical data
 
 ### 5. Integration Updates Required
 

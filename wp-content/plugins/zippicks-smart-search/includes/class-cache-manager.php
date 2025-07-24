@@ -177,7 +177,7 @@ class Cache_Manager {
      */
     private function generate_search_key($query, $location, $params = []) {
         // Apply cache key filter for normalization
-        $base_key = apply_filters('zippicks_search_cache_key', '', $query);
+        $base_key = apply_filters('zippicks_search_cache_key', $query);
         
         if (empty($base_key)) {
             // Fallback to default key generation

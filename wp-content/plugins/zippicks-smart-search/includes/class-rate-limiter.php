@@ -2,7 +2,8 @@
 /**
  * Rate Limiter for ZipPicks Smart Search
  * 
- * Implements sliding window rate limiting with Redis/Transient fallback
+ * Implements fixed window rate limiting with Redis/Transient fallback
+ * TODO: Upgrade to sliding window implementation using Redis sorted sets
  * 
  * @package ZipPicks_Smart_Search
  */
@@ -141,16 +142,153 @@ class Rate_Limiter {
             return 'user_' . get_current_user_id();
         }
         
-        // For anonymous users, use IP address
-        $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-        
-        // Handle multiple IPs in X-Forwarded-For
-        if (strpos($ip, ',') !== false) {
-            $ips = explode(',', $ip);
-            $ip = trim($ips[0]);
-        }
+        // For anonymous users, use IP address with proper validation
+        $ip = self::get_client_ip();
         
         return 'ip_' . $ip;
+    }
+    
+    /**
+     * Get client IP address with trusted proxy validation
+     * 
+     * @return string
+     */
+    private static function get_client_ip() {
+        // Default to REMOTE_ADDR
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+        
+        // Get trusted proxy IPs from configuration
+        $trusted_proxies = self::get_trusted_proxies();
+        
+        // Only check forwarded headers if request is from a trusted proxy
+        if (!empty($trusted_proxies) && self::is_trusted_proxy($ip, $trusted_proxies)) {
+            // Check headers in order of preference
+            $forwarded_headers = [
+                'HTTP_CF_CONNECTING_IP',     // Cloudflare
+                'HTTP_X_REAL_IP',           // Nginx proxy
+                'HTTP_X_FORWARDED_FOR',     // Standard proxy header
+                'HTTP_CLIENT_IP',           // Some proxies
+            ];
+            
+            foreach ($forwarded_headers as $header) {
+                if (!empty($_SERVER[$header])) {
+                    $forwarded_ip = $_SERVER[$header];
+                    
+                    // Handle comma-separated list (X-Forwarded-For can have multiple IPs)
+                    if (strpos($forwarded_ip, ',') !== false) {
+                        $ips = array_map('trim', explode(',', $forwarded_ip));
+                        // Get the first IP (original client)
+                        $forwarded_ip = $ips[0];
+                    }
+                    
+                    // Validate IP format
+                    if (filter_var($forwarded_ip, FILTER_VALIDATE_IP)) {
+                        return $forwarded_ip;
+                    }
+                }
+            }
+        }
+        
+        return $ip;
+    }
+    
+    /**
+     * Get list of trusted proxy IPs
+     * 
+     * @return array
+     */
+    private static function get_trusted_proxies() {
+        // Get from options with filter for customization
+        $trusted_proxies = apply_filters('zippicks_trusted_proxy_ips', 
+            get_option('zippicks_trusted_proxies', [])
+        );
+        
+        // Ensure it's an array
+        if (!is_array($trusted_proxies)) {
+            $trusted_proxies = [];
+        }
+        
+        // Add Cloudflare IPs if enabled
+        if (get_option('zippicks_trust_cloudflare', false)) {
+            // Cloudflare IP ranges (should be updated periodically)
+            // These are example ranges - in production, fetch from https://www.cloudflare.com/ips/
+            $cloudflare_ips = [
+                '173.245.48.0/20',
+                '103.21.244.0/22',
+                '103.22.200.0/22',
+                '103.31.4.0/22',
+                '141.101.64.0/18',
+                '108.162.192.0/18',
+                '190.93.240.0/20',
+                '188.114.96.0/20',
+                '197.234.240.0/22',
+                '198.41.128.0/17',
+                '162.158.0.0/15',
+                '104.16.0.0/13',
+                '104.24.0.0/14',
+                '172.64.0.0/13',
+                '131.0.72.0/22',
+            ];
+            
+            $trusted_proxies = array_merge($trusted_proxies, $cloudflare_ips);
+        }
+        
+        return array_unique($trusted_proxies);
+    }
+    
+    /**
+     * Check if IP is a trusted proxy
+     * 
+     * @param string $ip
+     * @param array $trusted_proxies
+     * @return bool
+     */
+    private static function is_trusted_proxy($ip, $trusted_proxies) {
+        foreach ($trusted_proxies as $proxy) {
+            if (strpos($proxy, '/') !== false) {
+                // CIDR range
+                if (self::ip_in_range($ip, $proxy)) {
+                    return true;
+                }
+            } else {
+                // Single IP
+                if ($ip === $proxy) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Check if IP is in CIDR range
+     * 
+     * @param string $ip
+     * @param string $range
+     * @return bool
+     */
+    private static function ip_in_range($ip, $range) {
+        if (strpos($range, '/') === false) {
+            return $ip === $range;
+        }
+        
+        list($subnet, $bits) = explode('/', $range, 2);
+        if ($bits === null) {
+            $bits = 32;
+        }
+        
+        $ip_long = ip2long($ip);
+        $subnet_long = ip2long($subnet);
+        
+        if ($ip_long === false || $subnet_long === false) {
+            return false;
+        }
+        
+        $mask = -1 << (32 - (int)$bits);
+        $subnet_long &= $mask;
+        
+        return ($ip_long & $mask) === $subnet_long;
     }
     
     /**
@@ -212,25 +350,39 @@ class Rate_Limiter {
         if (self::has_redis()) {
             global $wp_object_cache;
             
-            // Use Redis INCR with expiry
-            $count = $wp_object_cache->get($cache_key, 'rate_limit');
+            // Use atomic INCR operation to avoid race conditions
+            // INCR returns the value after incrementing
+            $new_count = $wp_object_cache->incr($cache_key, 1, 'rate_limit');
             
-            if ($count === false) {
-                $wp_object_cache->set($cache_key, 1, 'rate_limit', $window);
-            } else {
-                // Increment without changing expiry
-                $wp_object_cache->incr($cache_key, 1, 'rate_limit');
+            // Set expiration only if this is the first request (count = 1)
+            // This prevents resetting the window on every request
+            if ($new_count === 1) {
+                // Use Redis EXPIRE command if available through cache implementation
+                if (method_exists($wp_object_cache, 'expire')) {
+                    $wp_object_cache->expire($cache_key, $window, 'rate_limit');
+                } else {
+                    // Fallback: Re-set with same value to update expiry
+                    // Note: This has a small race condition but is better than the original
+                    $wp_object_cache->set($cache_key, 1, 'rate_limit', $window);
+                }
             }
+            
+            // TODO: For true sliding window rate limiting, implement using Redis sorted sets:
+            // - ZADD with timestamp as score and unique request ID as member
+            // - ZREMRANGEBYSCORE to remove old entries outside the window
+            // - ZCARD to count requests within the window
+            // This would provide more accurate rate limiting but requires more Redis operations
             
             return;
         }
         
-        // Fallback to transients
+        // Fallback to transients (still has race condition but no better option with transients)
         $count = get_transient($cache_key);
         
         if ($count === false) {
             set_transient($cache_key, 1, $window);
         } else {
+            // Note: This approach has a race condition but WordPress transients don't support atomic operations
             set_transient($cache_key, intval($count) + 1, $window);
         }
     }

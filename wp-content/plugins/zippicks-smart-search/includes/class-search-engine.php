@@ -33,9 +33,9 @@ class Search_Engine {
      * Constructor
      */
     public function __construct() {
-        $this->api_client = new API_Client();
-        $this->cache_manager = new Cache_Manager();
-        $this->analytics = new Analytics();
+        $this->api_client = API_Client::instance();
+        $this->cache_manager = Cache_Manager::instance();
+        $this->analytics = Analytics::instance();
     }
     
     /**
@@ -150,7 +150,7 @@ class Search_Engine {
         // Handle different intent types
         switch ($classification['intent']) {
             case Intent_Classifier::INTENT_VIBE:
-                return $this->search_by_vibe($classification, $search_params, $context);
+                return $this->search_by_vibe($classification, $search_params);
                 
             case Intent_Classifier::INTENT_UTILITY:
                 return $this->search_by_utility($classification, $search_params, $context);
@@ -168,10 +168,9 @@ class Search_Engine {
      * 
      * @param array $classification
      * @param array $params
-     * @param array $context
      * @return array
      */
-    private function search_by_vibe($classification, $params, $context) {
+    private function search_by_vibe($classification, $params) {
         // Expand vibes
         $vibes = $classification['detected_vibes'];
         $expanded_vibes = Intent_Classifier::expand_vibes($vibes);
@@ -302,7 +301,7 @@ class Search_Engine {
      */
     private function search_hybrid($classification, $params, $context) {
         // Get both vibe and utility results
-        $vibe_results = $this->search_by_vibe($classification, $params, $context);
+        $vibe_results = $this->search_by_vibe($classification, $params);
         $utility_results = $this->search_by_utility($classification, $params, $context);
         
         // Merge and deduplicate
@@ -637,11 +636,42 @@ class Search_Engine {
             return $detector->get_session_id();
         }
         
-        // Fallback
-        if (!session_id()) {
-            session_start();
+        // WordPress-safe session management using cookies
+        $cookie_name = 'zippicks_session_id';
+        $session_id = isset($_COOKIE[$cookie_name]) ? sanitize_text_field($_COOKIE[$cookie_name]) : '';
+        
+        // Validate existing session ID format
+        if (!empty($session_id) && preg_match('/^[a-zA-Z0-9]{32}$/', $session_id)) {
+            return $session_id;
         }
-        return session_id();
+        
+        // Generate new session ID
+        $session_id = wp_generate_password(32, false, false);
+        
+        // Set cookie with secure parameters
+        $expire = time() + (86400 * 30); // 30 days
+        $secure = is_ssl();
+        $httponly = true;
+        
+        // Use WordPress cookie path and domain
+        $cookie_path = COOKIEPATH ?: '/';
+        $cookie_domain = COOKIE_DOMAIN ?: '';
+        
+        // Set the cookie - will be sent on next page load
+        setcookie(
+            $cookie_name,
+            $session_id,
+            $expire,
+            $cookie_path,
+            $cookie_domain,
+            $secure,
+            $httponly
+        );
+        
+        // Also store in a transient for immediate use
+        set_transient('zps_session_' . $session_id, true, 86400 * 30);
+        
+        return $session_id;
     }
     
     /**

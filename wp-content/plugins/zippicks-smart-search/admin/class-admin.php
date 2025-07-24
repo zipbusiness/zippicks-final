@@ -81,7 +81,7 @@ class Admin {
      */
     public function display_dashboard() {
         // Get API status
-        $api_client = new API_Client();
+        $api_client = API_Client::instance();
         $api_status = $api_client->check_connection();
         
         // Get cache status
@@ -89,7 +89,7 @@ class Admin {
         $cache_stats = $cache->get_stats();
         
         // Get recent searches from API
-        $analytics = new Analytics();
+        $analytics = Analytics::instance();
         $recent_searches = $analytics->get_recent_searches(10);
         ?>
         <div class="wrap">
@@ -514,6 +514,8 @@ class Admin {
         register_setting('zippicks_search_settings', 'zippicks_search_default_radius');
         register_setting('zippicks_search_settings', 'zippicks_search_default_location');
         register_setting('zippicks_search_settings', 'zippicks_search_frontend_api_key');
+        register_setting('zippicks_search_settings', 'zippicks_search_backend_api_key');
+        register_setting('zippicks_search_settings', 'zippicks_search_use_proxy');
         
         // General section
         add_settings_section(
@@ -567,6 +569,14 @@ class Admin {
             'frontend_api_key',
             __('Frontend API Key', 'zippicks-smart-search'),
             [$this, 'render_frontend_api_key_field'],
+            'zippicks_search_settings',
+            'zippicks_search_api'
+        );
+        
+        add_settings_field(
+            'backend_api_key',
+            __('Backend API Key', 'zippicks-smart-search'),
+            [$this, 'render_backend_api_key_field'],
             'zippicks_search_settings',
             'zippicks_search_api'
         );
@@ -643,6 +653,10 @@ class Admin {
      */
     public function render_api_section() {
         echo '<p>' . __('API configuration for frontend search functionality', 'zippicks-smart-search') . '</p>';
+        echo '<p>' . sprintf(
+            __('For CORS security configuration guidelines, see the <a href="%s" target="_blank">CORS Security Documentation</a>.', 'zippicks-smart-search'),
+            esc_url(ZIPPICKS_SEARCH_PLUGIN_URL . 'docs/CORS-SECURITY.md')
+        ) . '</p>';
     }
     
     /**
@@ -650,9 +664,41 @@ class Admin {
      */
     public function render_frontend_api_key_field() {
         $value = get_option('zippicks_search_frontend_api_key', '');
+        $use_proxy = get_option('zippicks_search_use_proxy', false);
         ?>
         <input type="text" name="zippicks_search_frontend_api_key" value="<?php echo esc_attr($value); ?>" class="regular-text" />
-        <p class="description"><?php _e('Read-only API key for frontend JavaScript (leave empty to disable direct API access)', 'zippicks-smart-search'); ?></p>
+        <div class="notice notice-warning inline" style="margin-top: 10px;">
+            <p>
+                <strong><?php _e('Security Notice:', 'zippicks-smart-search'); ?></strong>
+                <?php _e('This API key will be publicly visible in the browser\'s source code. Ensure this key:', 'zippicks-smart-search'); ?>
+            </p>
+            <ul style="list-style: disc; margin-left: 20px;">
+                <li><?php _e('Is restricted to READ-ONLY operations', 'zippicks-smart-search'); ?></li>
+                <li><?php _e('Has proper CORS/domain restrictions configured on your API server', 'zippicks-smart-search'); ?></li>
+                <li><?php _e('Cannot access sensitive data or perform write operations', 'zippicks-smart-search'); ?></li>
+            </ul>
+            <p><?php _e('For enhanced security, consider using the proxy option below.', 'zippicks-smart-search'); ?></p>
+        </div>
+        <br>
+        <label>
+            <input type="checkbox" name="zippicks_search_use_proxy" value="1" <?php checked($use_proxy, true); ?> />
+            <?php _e('Use secure proxy for API calls (recommended)', 'zippicks-smart-search'); ?>
+        </label>
+        <p class="description"><?php _e('When enabled, API calls will be routed through your WordPress server, hiding the API key from the frontend.', 'zippicks-smart-search'); ?></p>
+        <?php
+    }
+    
+    /**
+     * Render backend API key field
+     */
+    public function render_backend_api_key_field() {
+        $value = get_option('zippicks_search_backend_api_key', '');
+        ?>
+        <input type="password" name="zippicks_search_backend_api_key" value="<?php echo esc_attr($value); ?>" class="regular-text" />
+        <p class="description"><?php _e('Secure API key for server-side operations (used only when proxy is enabled)', 'zippicks-smart-search'); ?></p>
+        <div class="notice notice-info inline" style="margin-top: 10px;">
+            <p><?php _e('This key is never exposed to the frontend and should have full read permissions.', 'zippicks-smart-search'); ?></p>
+        </div>
         <?php
     }
     

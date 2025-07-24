@@ -28,9 +28,16 @@
             if (this.config.enableLocalStorage && window.localStorage) {
                 const storedCount = localStorage.getItem(this.config.storageKey);
                 if (storedCount) {
-                    const data = JSON.parse(storedCount);
-                    if (data.date === new Date().toDateString()) {
-                        this.errorCount = data.count;
+                    try {
+                        const data = JSON.parse(storedCount);
+                        if (data && typeof data === 'object' && data.date === new Date().toDateString()) {
+                            this.errorCount = data.count || 0;
+                        }
+                    } catch (parseError) {
+                        // Log parsing error and reset corrupted data
+                        console.warn('ZipPicks Error Reporter: Failed to parse stored error data, resetting:', parseError);
+                        localStorage.removeItem(this.config.storageKey);
+                        this.errorCount = 0;
                     }
                 }
             }
@@ -120,8 +127,7 @@
             if (typeof jQuery !== 'undefined') {
                 jQuery(document).ajaxError(function(event, jqXHR, ajaxSettings, thrownError) {
                     // Only track our plugin's AJAX calls
-                    if (!ajaxSettings.url.includes('zippicks') && 
-                        !ajaxSettings.data.includes('zippicks')) {
+                    if (!this.isZipPicksAjaxCall(ajaxSettings)) {
                         return;
                     }
                     
@@ -146,6 +152,97 @@
                     this.reportError(errorData);
                 }.bind(this));
             }
+        },
+        
+        // Check if AJAX call is related to ZipPicks plugin
+        isZipPicksAjaxCall: function(ajaxSettings) {
+            // Define ZipPicks-specific patterns
+            const zipPicksPatterns = {
+                // URL patterns (case-insensitive)
+                urlPatterns: [
+                    /\/wp-admin\/admin-ajax\.php$/i,
+                    /\/wp-json\/zippicks\/v\d+\//i,
+                    /zippicks.*\.php$/i
+                ],
+                
+                // Action patterns for WordPress AJAX
+                actionPatterns: [
+                    /^zippicks_/i,
+                    /^wp_ajax_zippicks_/i
+                ],
+                
+                // Data key patterns
+                dataKeyPatterns: [
+                    /zippicks/i
+                ]
+            };
+            
+            // Check URL patterns
+            if (ajaxSettings.url) {
+                // Parse URL to get pathname
+                let urlPath;
+                try {
+                    const url = new URL(ajaxSettings.url, window.location.origin);
+                    urlPath = url.pathname;
+                } catch (e) {
+                    // Fallback for relative URLs
+                    urlPath = ajaxSettings.url;
+                }
+                
+                // Check if URL matches ZipPicks patterns
+                for (const pattern of zipPicksPatterns.urlPatterns) {
+                    if (pattern.test(urlPath)) {
+                        // Additional verification for admin-ajax.php
+                        if (urlPath.includes('admin-ajax.php')) {
+                            return this.checkAjaxData(ajaxSettings, zipPicksPatterns);
+                        }
+                        return true;
+                    }
+                }
+            }
+            
+            // Check data patterns even if URL doesn't match (for some AJAX calls)
+            return this.checkAjaxData(ajaxSettings, zipPicksPatterns);
+        },
+        
+        // Check AJAX data for ZipPicks-specific patterns
+        checkAjaxData: function(ajaxSettings, patterns) {
+            if (!ajaxSettings.data) {
+                return false;
+            }
+            
+            let dataToCheck = '';
+            
+            // Handle different data formats
+            if (typeof ajaxSettings.data === 'string') {
+                dataToCheck = ajaxSettings.data;
+            } else if (typeof ajaxSettings.data === 'object') {
+                // Check for 'action' parameter specifically (WordPress AJAX)
+                if (ajaxSettings.data.action) {
+                    for (const pattern of patterns.actionPatterns) {
+                        if (pattern.test(ajaxSettings.data.action)) {
+                            return true;
+                        }
+                    }
+                }
+                
+                // Convert object to string for broader checking
+                try {
+                    dataToCheck = JSON.stringify(ajaxSettings.data);
+                } catch (e) {
+                    // Fallback to string conversion
+                    dataToCheck = String(ajaxSettings.data);
+                }
+            }
+            
+            // Check data content for ZipPicks patterns
+            for (const pattern of patterns.dataKeyPatterns) {
+                if (pattern.test(dataToCheck)) {
+                    return true;
+                }
+            }
+            
+            return false;
         },
         
         // Get stack trace from error object
