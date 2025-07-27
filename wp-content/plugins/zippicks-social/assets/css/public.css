@@ -1,0 +1,353 @@
+/**
+ * ZipPicks Social - Public Styles
+ * 
+ * @package ZipPicks_Social
+ * @since 1.0.0
+ */
+
+/* Follow Button Styles */
+.zps-follow-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: 1px solid #0073aa;
+    background: #0073aa;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+    text-decoration: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.zps-follow-button:hover {
+    background: #005a87;
+    border-color: #005a87;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.zps-follow-button:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+.zps-follow-button:disabled,
+.zps-follow-button.zps-loading {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Following State */
+.zps-follow-button.zps-following {
+    background: #f0f0f1;
+    border-color: #dcdcde;
+    color: #2c3338;
+}
+
+.zps-follow-button.zps-following:hover {
+    background: #fff;
+    border-color: #d63638;
+    color: #d63638;
+}
+
+.zps-follow-button.zps-following.zps-hover-unfollow {
+    background: #fff;
+    border-color: #d63638;
+    color: #d63638;
+}
+
+/* Button Sizes */
+.zps-follow-button.zps-size-small {
+    padding: 5px 12px;
+    font-size: 12px;
+}
+
+.zps-follow-button.zps-size-large {
+    padding: 12px 24px;
+    font-size: 16px;
+}
+
+/* Button Styles */
+.zps-follow-button.zps-style-minimal {
+    background: transparent;
+    color: #0073aa;
+}
+
+.zps-follow-button.zps-style-minimal:hover {
+    background: rgba(0, 115, 170, 0.1);
+}
+
+.zps-follow-button.zps-style-minimal.zps-following {
+    color: #2c3338;
+}
+
+.zps-follow-button.zps-style-rounded {
+    border-radius: 20px;
+}
+
+/* Button Icon */
+.zps-button-icon {
+    display: none;
+    width: 16px;
+    height: 16px;
+}
+
+/* Followers Count */
+.zps-followers-count {
+    margin-left: 4px;
+    padding-left: 8px;
+    border-left: 1px solid rgba(255, 255, 255, 0.3);
+    font-weight: 400;
+}
+
+.zps-follow-button.zps-following .zps-followers-count {
+    border-left-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Loading State */
+.zps-follow-button.zps-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: zps-spin 0.8s linear infinite;
+}
+
+@keyframes zps-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Error Tooltip */
+.zps-error-tooltip {
+    position: absolute;
+    z-index: 10000;
+    padding: 8px 12px;
+    background: #d63638;
+    color: #fff;
+    font-size: 13px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    display: none;
+}
+
+.zps-error-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #d63638 transparent transparent transparent;
+}
+
+/* Followers/Following Lists */
+.zps-followers-list,
+.zps-following-list {
+    display: grid;
+    gap: 16px;
+}
+
+.zps-follower-item,
+.zps-following-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.zps-follower-item:hover,
+.zps-following-item:hover {
+    border-color: #949494;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.zps-follower-avatar,
+.zps-following-avatar {
+    flex-shrink: 0;
+}
+
+.zps-follower-avatar img,
+.zps-following-avatar img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.zps-follower-info,
+.zps-following-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.zps-follower-name,
+.zps-following-name {
+    font-weight: 500;
+}
+
+.zps-follower-name a,
+.zps-following-name a {
+    color: #2c3338;
+    text-decoration: none;
+}
+
+.zps-follower-name a:hover,
+.zps-following-name a:hover {
+    color: #0073aa;
+    text-decoration: underline;
+}
+
+.zps-entity-type {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    background: #f0f0f1;
+    color: #646970;
+    font-size: 11px;
+    font-weight: 400;
+    text-transform: uppercase;
+    border-radius: 3px;
+}
+
+/* Activity Feed */
+.zps-activity-feed {
+    max-width: 800px;
+}
+
+.zps-feed-loading,
+.zps-feed-empty,
+.zps-feed-error {
+    padding: 40px;
+    text-align: center;
+    color: #646970;
+}
+
+.zps-feed-content {
+    display: grid;
+    gap: 16px;
+}
+
+.zps-activity-item {
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+}
+
+.zps-activity-actor {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.zps-activity-actor img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.zps-activity-meta {
+    flex: 1;
+}
+
+.zps-activity-meta strong {
+    display: block;
+    margin-bottom: 2px;
+}
+
+.zps-activity-action {
+    color: #646970;
+    font-size: 14px;
+}
+
+.zps-activity-meta time {
+    color: #8c8f94;
+    font-size: 13px;
+}
+
+.zps-activity-object {
+    padding: 12px;
+    background: #f6f7f7;
+    border-radius: 4px;
+}
+
+.zps-load-more {
+    display: block;
+    width: 100%;
+    margin-top: 24px;
+    padding: 12px;
+    background: #f0f0f1;
+    border: 1px solid #dcdcde;
+    color: #2c3338;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.zps-load-more:hover {
+    background: #e7e7e7;
+    border-color: #949494;
+}
+
+/* Empty States */
+.zps-no-followers,
+.zps-no-following {
+    padding: 24px;
+    text-align: center;
+    color: #646970;
+    background: #f6f7f7;
+    border: 1px dashed #dcdcde;
+    border-radius: 4px;
+}
+
+/* Author Follow Button Integration */
+.zps-author-follow {
+    margin-top: 16px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .zps-follower-item,
+    .zps-following-item {
+        padding: 8px;
+    }
+    
+    .zps-follower-avatar img,
+    .zps-following-avatar img {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .zps-follow-button {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+    
+    .zps-followers-count {
+        display: none;
+    }
+}
